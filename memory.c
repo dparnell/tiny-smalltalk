@@ -157,8 +157,9 @@ gc_move(struct mobject * ptr)
 
 				isz = old_address->size >> 2;
 				sz = (isz + BytesPerWord - 1)/BytesPerWord;
-				memoryPointer -= (sz + 2);
-				new_address = (struct mobject *) memoryPointer;
+				memoryPointer = (struct object *)(
+				 ((uint *)memoryPointer) - (sz + 2));
+				new_address = (struct mobject *)memoryPointer;
 				new_address->size = (isz << 2) | 02;
 				while (sz) {
 					new_address->data[sz] =
@@ -175,8 +176,9 @@ gc_move(struct mobject * ptr)
 			/* must be non-binary object */
 			} else  {
 				sz = old_address->size >> 2;
-				memoryPointer -= (sz + 2);
-				new_address = (struct mobject *) memoryPointer;
+				memoryPointer = (struct object *)(
+				 ((uint *)memoryPointer) - (sz + 2));
+				new_address = (struct mobject *)memoryPointer;
 				new_address->size = (sz << 2);
 				old_address->size |= 01;
 				new_address->data[sz] = previous_object;

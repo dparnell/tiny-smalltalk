@@ -42,10 +42,11 @@ static struct object * oldTop;
 	roots for memory access
 	used as bases for garbage collection algorithm
 */
-struct object * rootStack[ROOTSTACKLIMIT];
+struct object *rootStack[ROOTSTACKLIMIT];
 int rootTop = 0;
-struct object * * staticRoots[STATICROOTLIMIT];
-int staticRootTop = 0;
+#define STATICROOTLIMIT (200)
+static struct object **staticRoots[STATICROOTLIMIT];
+static int staticRootTop = 0;
 
 /*
 	test routine to see if a pointer is in dynamic memory
@@ -99,15 +100,13 @@ void gcinit(int staticsz, int dynamicsz)
 struct mobject {
 	int size;
 	struct mobject * data [0];
-	};
+};
 
 static struct object * gc_move(struct mobject * ptr)
 {
-	register struct mobject * old_address = ptr;
-	struct mobject * previous_object = 0;
-	struct mobject * new_address = 0;
-	struct mobject * replacement  = 0;
-	register int sz;
+	struct mobject *old_address = ptr, *previous_object = 0,
+		*new_address = 0, *replacement  = 0;
+	int sz;
 
 	while (1) {
 
@@ -132,12 +131,12 @@ static struct object * gc_move(struct mobject * ptr)
 			}
 				/* else see if already forwarded */
 			else if (old_address->size & 01)  {
-				if (old_address->size & 02)
+				if (old_address->size & 02) {
 					replacement = old_address->data[0];
-				else {
+				} else {
 					sz = old_address->size >> 2;
 					replacement = old_address->data[sz];
-					}
+				}
 				old_address = previous_object;
 				break;
 			}
@@ -181,8 +180,9 @@ static struct object * gc_move(struct mobject * ptr)
 			the value in replacement is the new value */
 
 		while (1) {
-			if (old_address == 0)  /* backed out entirely */
+			if (old_address == 0) { /* backed out entirely */
 				return (struct object *) replacement;
+			}
 				/* case 1, binary or last value */
 			if ((old_address->size & 02) ||
 				((old_address->size>>2) == 0)) {
@@ -193,8 +193,7 @@ static struct object * gc_move(struct mobject * ptr)
 				old_address->data[0] = new_address;
 				replacement = new_address;
 				old_address = previous_object;
-			}
-			else {
+			} else {
 				sz = old_address->size >> 2;
 				new_address = old_address->data[sz];
 				previous_object = new_address->data[sz];
@@ -202,8 +201,9 @@ static struct object * gc_move(struct mobject * ptr)
 				sz--;
 					/* quick cheat for recovering
 						zero fields */
-				while (sz && (old_address->data[sz] == 0))
+				while (sz && (old_address->data[sz] == 0)) {
 					sz--;
+				}
 				old_address->size = (sz << 2) | 01;
 				new_address->data[sz] = previous_object;
 				previous_object = old_address;
@@ -212,7 +212,6 @@ static struct object * gc_move(struct mobject * ptr)
 				break; /* go track down this value */
 			}
 		}
-
 	}
 }
 
@@ -221,7 +220,8 @@ static struct object * gc_move(struct mobject * ptr)
 */
 extern int gccount;
 struct object * gcollect(int sz)
-{	register int i;
+{
+	int i;
 
 	gccount++;
 	/* first change spaces */
@@ -517,4 +517,30 @@ int fileOut(FILE * fp)
 	/* clean up after ourselves */
 	bzero((char *) indirArray, spaceSize * sizeof(struct object));
 	return indirtop;
+}
+
+/*
+ * addStaticRoot()
+ *	Add another object root off a static object
+ *
+ * Static objects, in general, do not get garbage collected.  When
+ * a static object is discovered adding a reference to a non-static
+ * object, we link on the reference to our staticRoot table so we can
+ * give it proper treatment during garbage collection.
+ */
+void
+addStaticRoot(struct object **objp)
+{
+	int i;
+
+	for (i = 0; i < staticRootTop; ++i) {
+		if (objp == staticRoots[i]) {
+			return;
+		}
+	}
+	if (staticRootTop >= STATICROOTLIMIT) {
+		sysError("addStaticRoot: too many static references",
+			(unsigned int)objp);
+	}
+	staticRoots[staticRootTop++] = objp;
 }

@@ -345,8 +345,7 @@ int execute (struct object * aProcess)
 		if ((! isDynamicMemory(instanceVariables)) 
 			&& isDynamicMemory(stack->data[stackTop-1]))
 			{
-			staticRoots[staticRootTop++] = 
-				& instanceVariables->data[low];
+			addStaticRoot(&instanceVariables->data[low]);
 			}
                 break;
 

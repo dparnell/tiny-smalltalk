@@ -76,9 +76,7 @@ extern struct object * memoryBase;
 # define ROOTSTACKLIMIT 50
 extern struct object * rootStack[];
 extern int rootTop;
-# define STATICROOTLIMIT 200
-extern struct object * * staticRoots[];
-extern int staticRootTop;
+extern void addStaticRoot(struct object **);
 
 /*
 	The following are roots for the file out 

@@ -774,6 +774,20 @@ reject: testBlock
 		" select the things that do not match predicate "
 	^ self select: [:x | (testBlock value: x) not ]
 !
+METHOD Collection
+printString | count res |
+	res <- super printString.
+	(self respondsTo: #do:) ifFalse: [ ^ res ].
+	count <- 0.
+	res <- res + ' ('.
+	self do: [:elem| 
+		(count = 0) ifFalse: [ res <- res + ' ' ].
+		res <- res + elem printString.
+		count <- count + 1.
+		(count >= 20) ifTrue: [ ^ res + ')' ]
+	].
+	^ res + ')'
+!
 COMMENT ---------- Array ------------
 METHOD MetaArray
 new

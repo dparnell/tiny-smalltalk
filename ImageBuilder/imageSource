@@ -63,6 +63,8 @@ CLASS MetaInterval  Class         MetaCollection
 CLASS Interval      MetaInterval  Collection        low high step
 CLASS MetaFile      Class         MetaObject
 CLASS File          MetaFile      Object            fileID
+CLASS MetaAssociation	Class	MetaObject
+CLASS Association	MetaAssociation	Magnitude	value key
 COMMENT ---------- Classes having to do with parsing ------------
 CLASS Parser Class Object text index tokenType token argNames tempNames instNames maxTemps errBlock
 CLASS ParserNode Class Object
@@ -1297,6 +1299,43 @@ addLast: anElement
 	next notNil
 		ifTrue: [ ^ next addLast: anElement ]
 		ifFalse: [ next <- Link value: anElement ]
+!
+COMMENT ---------- Association ------------
+METHOD MetaAssociation
+key: k
+		"key is set once, value is resettable"
+	^ self in: self new at: 1 put: k
+!
+METHOD MetaAssociation
+key: k value: v
+		"key is set once, value is resettable"
+	^ (self in: self new at: 1 put: k) value: v
+!
+METHOD Association
+= k
+		"compare both with keys and associations"
+	(k class == Association)
+		ifTrue: [ ^ key = k key ]
+		ifFalse: [ ^ key = k ]
+!
+METHOD Association
+< k
+		"compare both with keys and associations"
+	(k class == Association)
+		ifTrue: [ ^ key < k key ]
+		ifFalse: [ ^ key < k ]
+!
+METHOD Association
+value: v
+	value <- v
+!
+METHOD Association
+value
+	^ value
+!
+METHOD Association
+key
+	^ key
 !
 COMMENT --------------file methods-----------------
 METHOD MetaFile

@@ -41,8 +41,7 @@ debug: n | meth s |
 	s <- n asSymbol.
 	meth <- methods at: s.
 	(meth isKindOf: DebugMethod) ifFalse: [
-		'Compiling ' print. n printString print. '...' print.
-		Char newline print.
+		'Compiling ' print. n printString print. '...' printNl.
 		meth <- (Parser new text: meth text
 			instanceVars: self instanceVariables)
 			 parse: self with: DebugEncoder.
@@ -51,8 +50,7 @@ debug: n | meth s |
 				methods at: s put: meth
 			]
 			ifFalse: [
-				'Compilation failed.' print.
-				Char newline print.
+				'Compilation failed.' printNl.
 				^ nil
 			]
 	].
@@ -63,10 +61,11 @@ runIt | ret |
 	" Execute for one instruction.  Return whether or not the return
 	 was 'normal' (i.e., VM stopped due to single stepping, not
 	 something else "
-	ret <- proc doExecute: 1.
+	ret <- proc doExecute: 2.
 	(ret = 5) ifTrue: [ ^ true ].
-	(ret = 3) ifTrue: [ 'Message not understood' print ].
-	(ret = 2) ifTrue: [ 'Method returned' print ].
+	(ret = 4) ifTrue: [ 'Method returned' printNl ].
+	(ret = 3) ifTrue: [ 'Message not understood' printNl ].
+	(ret = 2) ifTrue: [ 'Error trap' printNl ].
 	^ false
 !
 !Context
@@ -84,7 +83,7 @@ srcLine | meth line |
 
 	" Can't show it if this isn't a debuggable method "
 	(meth isKindOf: DebugMethod) ifFalse: [
-		'Not debuggable' print. Char newline print.
+		'Not debuggable' printNl.
 		^ nil
 	].
 
@@ -99,13 +98,12 @@ showLine | line meth |
 		ifTrue: [
 			'Method ' print.  meth name print.
 			' of class ' print.  meth class print.
-			': no source displayed.' print.
+			': no source displayed.' printNl
 		]
 		ifFalse: [
 			" Show the text "
-			(meth textlines at: line) print
-		].
-	Char newline print
+			(meth textlines at: line) printNl
+		]
 !
 =Debug
 debug: class method: meth | ret ctx proc |
@@ -123,8 +121,9 @@ context: c proc: p
 	proc <- p
 !
 !Debug
-run | prev did cmd srcl |
+run | prev did cmd srcl done |
 	prev <- ''.
+	done <- false.
 	[true] whileTrue: [
 		" Show where we are "
 		self showLine.
@@ -138,18 +137,29 @@ run | prev did cmd srcl |
 
 		" Step a single VM instruction "
 		(cmd = 'stepi') ifTrue: [
-			self runIt.
+			done
+			 ifTrue: [ 'Not runnable' printNl ]
+			 ifFalse: [
+				(self runIt) ifFalse: [
+					done <- true
+				]
+			].
 			did <- true
 		].
 
 		" Step a source line "
 		((cmd = 'step') or: [cmd = 's']) ifTrue: [
-			srcl <- self srcLine.
-			[srcl = self srcLine] whileTrue: [
-				(self runIt) ifFalse: [
-					'Execution done at line ' print.
-					srcl printString print.
-					srcl = self srcLine
+			done
+			 ifTrue: [ 'Not runnable' printNl ]
+			 ifFalse: [
+				srcl <- self srcLine.
+				[done not and: [srcl = self srcLine]]
+				 whileTrue: [
+					(self runIt) ifFalse: [
+						'Execution done at line ' print.
+						srcl printString printNl.
+						done <- true
+					]
 				]
 			].
 			did <- true
@@ -173,10 +183,7 @@ run | prev did cmd srcl |
 		].
 
 		" Error "
-		did ifFalse: [ 'Unknown command.' print ].
-
-		" Add trailing newline "
-		Char newline print.
+		did ifFalse: [ 'Unknown command.' printNl ].
 	]
 !
 !DebugMethod
@@ -197,17 +204,22 @@ srcLine: bp | bpx |
 	" Array index version of bp... thanks, Smalltalk "
 	bpx <- bp + 1.
 	lines binaryDo: [:src :range |
-		range printString print. Char newline print.
 		(range contains: bpx) ifTrue: [
 			^ src
 		]
 	].
-	'No match for ' print. bp printString print. Char newline print.
+	'No match for ' print. bp printString printNl.
 	^nil
 !
 !Debug
-test | sum |
+test | sum cnt |
 	sum <- 0.
-	1 to: 10 do: [:x| sum <- sum + x].
+	cnt <- 1.
+	[cnt < 3] whileTrue: [
+		sum <- sum + cnt.
+		cnt <- cnt + 1
+	].
+	sum <- sum + 20.
+	sum printNl.
 	^sum
 !

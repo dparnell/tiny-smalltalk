@@ -1519,6 +1519,10 @@ printString | count res |
 	].
 	^ res + ')'
 !
+METHOD Dictionary
+add: anAssoc
+	self at: anAssoc key put: anAssoc value
+!
 COMMENT ---------- Set ------------
 METHOD MetaSet
 new: size | ret |

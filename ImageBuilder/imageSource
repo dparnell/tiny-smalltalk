@@ -137,7 +137,7 @@ question: text	| answer |
 METHOD Object
 error: str
 		" print the message "
-	str print. Char newline print.
+	str printNl.
 		" then halt "
 	<19>
 !
@@ -181,13 +181,13 @@ subclasses: indent
 		((obj isKindOf: Class) and: [ obj superclass == self])
 			ifTrue: [
 				1 to: indent do: [:ignore| $  print ].
-				obj print. Char newline print.
+				obj printNl.
 				obj subclasses: indent + 4 ] ]
 !
 METHOD Class
 listMethods
 	methods keysDo:
-		[ :name | name print. Char newline print ]
+		[ :name | name printNl ]
 !
 METHOD Class
 allMethods | allMethods |
@@ -199,7 +199,7 @@ allMethods | allMethods |
 !
 METHOD Class
 listAllMethods
-	self allMethods keysDo: [:n| n print. Char newline print ]
+	self allMethods keysDo: [:n| n printNl ]
 !
 METHOD Class
 viewMethod: name  | meth |
@@ -313,7 +313,7 @@ main	| command |
 		" main execution loop "
 	[ '-> ' print. command <- String input. command notNil ]
 		whileTrue: [ command isEmpty
-			ifFalse: [ command doIt print. Char newline print ] ]
+			ifFalse: [ command doIt printNl ] ]
 !
 COMMENT -----------Boolean--------------
 METHOD Boolean
@@ -414,10 +414,14 @@ context
 METHOD Process
 execute | r |
 	r <- self doExecute: 0.
-	(r = 3) ifTrue: [ 'Message not understood: ' print.
-			result print.  Char newline print ]
+	(r = 3) ifTrue: [
+		" Note: state field is filled in with arguments on error "
+		(state at: 1) print. ' (class ' print.
+		(state at: 1) class print. ') ' print.
+		'does not understand: ' print.  result printNl
+	].
 	(r = 4) ifTrue: [ ^ result ]
-		ifFalse: [ 'Backtrace:' print. Char newline print.
+		ifFalse: [ 'Backtrace:' printNl.
 			context backtrace. ^ nil ]
 !
 COMMENT -----------Context--------------
@@ -448,8 +452,7 @@ backtrace | narg |
 		a class print.
 		narg <- narg+1
 	].
-	')' print.
-	Char newline print.
+	')' printNl.
 	previousContext notNil
 		ifTrue: [ previousContext backtrace ]
 !
@@ -495,8 +498,7 @@ backtrace | narg |
 		a class print.
 		narg <- narg+1
 	].
-	')' print.
-	Char newline print.
+	')' printNl.
 	previousContext notNil
 		ifTrue: [ previousContext backtrace ]
 !
@@ -1126,7 +1128,7 @@ METHOD List
 findLink: index ifAbsent: aBlock | idx link |
 	link <- elements.
 	idx <- index.
-	link isNil ifTrue: [ self emptyList ].
+	link isNil ifTrue: [ ^ aBlock value ].
 	[ link notNil ] whileTrue: [
 		idx <- idx-1.
 		(idx = 0) ifTrue: [ ^ link ].
@@ -1784,14 +1786,15 @@ readChar	| c |
 			c notNil ifTrue: [ Char new: c ]]
 !
 METHOD File
-readLine	| value  c |
+readLine	| value  c nl |
 	" read a line from input "
 	fileID isNil ifTrue: [ self error: 'cannot read from unopened file' ].
 	value <- ''.
+	nl <- Char newline.
 	[ c <- self doRead.
 	  c isNil ifTrue: [ ^ nil ].
 	  c <- Char new: c.
-	  c ~= Char newline ] whileTrue:
+	  c ~= nl ] whileTrue:
 		[ value <- value + c asString ].
 	^ value
 !
@@ -1800,8 +1803,7 @@ fileIn		| cmd |
 	[ cmd <- self readChar. cmd notNil ]
 		whileTrue: [
 			cmd = $+
-				ifTrue: [ self readLine doIt print.
-					Char newline print ]
+				ifTrue: [ self readLine doIt printNl ]
 			ifFalse: [ (cmd = $! or: [ cmd = $=])
 				ifTrue: [ self methodCommand: cmd = $! ]
 				ifFalse: [ self readLine "it is a comment" ] ] ].
@@ -1815,11 +1817,11 @@ methodCommand: classCmd | name aClass text line |
 	[ line <- self readLine.
 	  line isNil ifTrue: [ ^ self error:
 		'unexpected end of input during fileIn' ].
-	  line ~= '!'] whileTrue: [ text <- text + line + Char newline asString ].
+	  line ~= '!'] whileTrue: [ text <- text + line +
+		  Char newline asString ].
 	classCmd
-		ifTrue: [ (aClass addMethod: text) print ]
-		ifFalse: [ (aClass class addMethod: text) print ].
-	Char newline print.
+		ifTrue: [ (aClass addMethod: text) printNl ]
+		ifFalse: [ (aClass class addMethod: text) printNl ]
 !
 COMMENT --------------parser methods-----------------
 METHOD Parser
@@ -1855,8 +1857,7 @@ error: aString
 	'Compile error near line ' print.
 	lineNum printString print.
 	': ' print.
-	aString print.
-	Char newline print.
+	aString printNl.
 	errBlock value
 !
 METHOD Parser

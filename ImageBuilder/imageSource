@@ -1672,10 +1672,16 @@ opened
 	^ fileID notNil
 !
 METHOD File
+close: id
+	<103 id>
+!
+METHOD File
 close
 		" close file, return file descriptor "
-	fileID notNil
-		ifTrue: [ <103 fileID> ]
+	fileID notNil ifTrue: [
+		self close: fileID.
+		fileID <- nil
+	]
 !
 METHOD File
 writeImage

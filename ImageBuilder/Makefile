@@ -1,5 +1,5 @@
-CC = gcc
-CFLAGS = -g
+CC=gcc
+CFLAGS=-g -I..
 
 image: imageBuilder imageSource
 	imageBuilder <imageSource

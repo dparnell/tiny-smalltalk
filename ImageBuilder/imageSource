@@ -36,7 +36,7 @@ CLASS OrderedArray  Array
 CLASS ByteArray     Array
 CLASS MetaString    Class         MetaArray
 CLASS String        Array
-CLASS Set	    Collection		members size bound
+CLASS Set	    Collection		members growth
 CLASS Number        Magnitude
 CLASS Integer       Number
 CLASS SmallInt      Number
@@ -94,6 +94,10 @@ METHOD Object
 METHOD Object
 ~= arg
 	^ (self = arg) not
+!
+METHOD Object
+~~ arg
+	^ (self == arg) not
 !
 METHOD Object
 class
@@ -1388,44 +1392,95 @@ COMMENT ---------- Set ------------
 COMMENT A Set... very inefficient.  Revisit when 'hash' is added to the VM.
 COMMENT by Andy Valencia, May 2001
 METHOD MetaSet
-new | ret |
+new: size | ret |
 	ret <- super new.
-	self in: ret at: 1 put: (Array new: 10).
-	self in: ret at: 2 put: 0.
-	self in: ret at: 3 put: 10.
+	self in: ret at: 1 put: (Array new: size).
+	self in: ret at: 2 put: size.
 	^ ret
 !
-METHOD Set
-grow | bigger |
-	bound <- bound + 10.
-	bigger <- Array new: bound.
-	1 to: size do: [:x|
-		bigger at: x put: (members at: x)
-	].
-	members <- bigger
+METHOD MetaSet
+new
+	^ self new: 10
 !
 METHOD Set
-add: elem
-	(self includes: elem) ifTrue: [
-		^ self
+grow | bigger old oldsize |
+	" Re-create ourselves in place with a new, bigger storage "
+	old <- members.
+	members <- Array new: (old size + growth).
+
+	" Re-insert each existing Set member "
+	old do: [:elem| self add: elem]
+!
+METHOD Set
+location: elem | pos start t |
+	start <- pos <- (elem hash rem: members size) + 1.
+	[ true ] whileTrue: [
+		" Return this position if we match, or have reached
+		  a nil slot. "
+		t <- members at: pos.
+		((t == elem) or: [t isNil]) ifTrue: [
+			^ pos
+		].
+
+		" Advance to next slot, circularly "
+		pos <- pos + 1.
+		(pos > members size) ifTrue: [
+			pos <- 1
+		].
+
+		" Return nil if we have scanned the whole Set "
+		(pos = start) ifTrue: [ ^ nil ]
+	]
+!
+METHOD Set
+add: elem | pos |
+	" Find the appropriate slot... if none, need to grow the Set "
+	pos <- self location: elem.
+	pos isNil ifTrue: [
+		self grow.
+		^ self add: elem
 	].
-	(size < bound) ifFalse: [
-		self grow
+
+	" If the slot is nil, this is a new entry which we put in place now "
+	((members at: pos) isNil) ifTrue: [
+		members at: pos put: elem
 	].
-	size <- size + 1.
-	members at: size put: elem
+	^ elem
+!
+METHOD Set
+rehash: start | pos elem |
+	pos <- start.
+	[ true ] whileTrue: [
+		" Advance to next slot, ceasing when we reach our start "
+		pos <- pos + 1.
+		(pos > members size) ifTrue: [ pos <- 1 ].
+		(pos = start) ifTrue: [ ^ self ]
+
+		" If we reach a nil slot, there are no further rehash
+		  worries. "
+		elem <- members at: pos.
+		elem isNil ifTrue: [ ^ self ].
+
+		" Nil out the slot, and then re-insert the element "
+		members at: pos put: nil.
+		self add: elem
+	]
 !
 METHOD Set
 remove: elem ifAbsent: aBlock | pos |
-	pos <- members indexOf: elem.
-	pos isNil ifTrue: [
+	" If not found, return error "
+	pos <- members location: elem.
+	((pos isNil) or: [(members at: pos) ~~ elem]) ifTrue: [
 		aBlock value
 	].
-	pos to: size do: [:x|
-		members at: x put: (members at: (x+1))
-	].
-	members at: size put: nil.
-	size <- size - 1
+
+	" Remove our element from the Set "
+	members at: pos put: nil.
+
+	" Re-hash all that follow "
+	self rehash: pos.
+
+	^ elem
 !
 METHOD Set
 remove: elem
@@ -1433,9 +1488,19 @@ remove: elem
 !
 METHOD Set
 do: aBlock
-	1 to: size do: [:x|
-		aBlock value: (members at: x)
-	]
+	members do: [:elem| elem notNil ifTrue: [ aBlock value: elem ]]
+!
+METHOD Set
+at: value ifAbsent: aBlock | pos |
+	pos <- self location: value.
+	((pos isNil) or: [ (members at: pos) ~~ value ]) ifTrue: [
+		^ aBlock value
+	].
+	^ value
+!
+METHOD Set
+indexOf: value
+	^ self at: value ifAbsent: [ nil ]
 !
 COMMENT ---------- Number ------------
 METHOD MetaNumber

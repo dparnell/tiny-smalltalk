@@ -49,6 +49,52 @@ struct object * initialMethod;
 struct object * binaryMessages[3];
 
 /*
+ * Debugging
+ */
+#ifdef DEBUG
+static void
+indent(struct object *ctx)
+{
+	static int oldlev = 0;
+	int lev = 0, x;
+
+	while (ctx && (ctx != nilObject)) {
+		lev += 1;
+		putchar(' ');
+		ctx = ctx->data[previousContextInContext];
+	}
+
+	/*
+	 * This lets you use your editor's brace matching to
+	 * match up opening and closing indentation levels.
+	 */
+	if (lev < oldlev) {
+		for (x = lev; x < oldlev; ++x) {
+			putchar('}');
+		}
+	} else if (lev > oldlev) {
+		for (x = oldlev; x < lev; ++x) {
+			putchar('{');
+		}
+	}
+
+	oldlev = lev;
+}
+#define PC (bytePointer-1)
+#define DBG0(msg) if (debugging) {indent(context); printf("%d: %s\n", PC, msg);}
+#define DBG1(msg, arg) if (debugging) {indent(context); \
+	printf("%d: %s %d\n", PC, msg, arg);}
+#define DBGS(msg, cl, sel) \
+	if (debugging) { \
+		indent(context); \
+		printf("%d: %s %s %s\n", PC, msg, cl, sel); }
+#else
+#define DBG0(msg)
+#define DBG1(msg, arg)
+#define DBGS(msg, cl, sel)
+#endif
+
+/*
 	method lookup routine, used when cache miss occurs
 */
 
@@ -170,6 +216,7 @@ int execute (struct object * aProcess)
         switch(high) {
 
             case PushInstance:
+		DBG1("PushInstance", low);
 		if (! arguments) 
 			arguments = context->data[argumentsInContext];
 		if (! instanceVariables)
@@ -179,24 +226,28 @@ int execute (struct object * aProcess)
                 break;
 
             case PushArgument:
+		DBG1("PushArgument", low);
 		if (! arguments) 
 			arguments = context->data[argumentsInContext];
 		stack->data[stackTop++] = arguments->data[low];
                 break;
 
 	    case PushTemporary:
+		DBG1("PushTemporary", low);
 		if (! temporaries)
 			temporaries = context->data[temporariesInContext];
 		stack->data[stackTop++] = temporaries->data[low];
 		break;
 
             case PushLiteral:
+		DBG1("PushLiteral", low);
 		if (! literals) 
 			literals = method->data[literalsInMethod];
 		stack->data[stackTop++] = literals->data[low];
                 break;
 
             case PushConstant:
+		DBG1("PushConstant", low);
 		switch(low) {
 			case 0: case 1: case 2: case 3: case 4: 
 			case 5: case 6: case 7: case 8: case 9:
@@ -214,6 +265,7 @@ int execute (struct object * aProcess)
                 break;
 
 	    case PushBlock:
+		DBG0("PushBlock");
 			/* create a block object */
 			/* low is arg location */
 			/* next byte is goto value */
@@ -250,6 +302,7 @@ int execute (struct object * aProcess)
 		break;
 
             case AssignInstance:
+		DBG1("AssignInstance", low);
 		if (! arguments) 
 			arguments = context->data[argumentsInContext];
 		if (! instanceVariables)
@@ -268,12 +321,14 @@ int execute (struct object * aProcess)
                 break;
 
             case AssignTemporary:
+	    	DBG1("AssignTemporary", low);
 		if (! temporaries)
 			temporaries = context->data[temporariesInContext];
 		temporaries->data[low] = stack->data[stackTop-1];
                 break;
 
             case MarkArguments:
+		DBG1("MarkArguments", low);
 		rootStack[rootTop++] = context;
 		arguments = gcalloc(low);
 		arguments->class = ArrayClass;
@@ -301,6 +356,9 @@ int execute (struct object * aProcess)
 
 	     findMethodFromSymbol:
 		receiverClass = arguments->data[receiverInArguments]->class;
+		DBGS("SendMessage",
+			bytePtr(receiverClass->data[nameInClass]),
+			bytePtr(messageSelector));
 	     checkCache:
 		low = (((unsigned int) messageSelector) +
 			((unsigned int) receiverClass)) % cacheSize;
@@ -383,6 +441,7 @@ int execute (struct object * aProcess)
 		break;
 
 	    case SendUnary:	/* optimize certain unary messages */
+		DBG1("SendUnary", low);
 		returnedValue = stack->data[--stackTop];
 		switch(low) {
 			case 0:	/* isNil */
@@ -404,6 +463,7 @@ int execute (struct object * aProcess)
 		break;
 
 	    case SendBinary:	/* optimize certain binary messages */
+		DBG1("SendBinary", low);
 		if ((stack->data[stackTop-1]->class == SmallIntClass)
 			&& (stack->data[stackTop-2]->class == SmallIntClass)) {
 			int i, j;
@@ -463,6 +523,7 @@ int execute (struct object * aProcess)
 			/* low is argument count */
 			/* next byte is primitive number */
 		high = bp[bytePointer++];
+		DBG1("DoPrimitive", high);
 		rootStack[rootTop++] = context;
 		lastPrimitiveNumber = high;
 		switch (high) {
@@ -678,6 +739,7 @@ int execute (struct object * aProcess)
 		break;
 
             case DoSpecial:
+		DBG1("DoSpecial", low);
                 switch(low) {
                     case SelfReturn:
 			if (! arguments) 
@@ -725,7 +787,7 @@ int execute (struct object * aProcess)
 			break;
 
                     case Branch:
-			bytePointer = bp[bytePointer++];
+			bytePointer = bp[bytePointer];
 			break;
 
                     case BranchIfTrue:

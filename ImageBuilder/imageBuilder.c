@@ -960,7 +960,6 @@ controlFlow(int opt1, char * rest, int opt2)
 	return 1;
 }
 
-#ifdef LATER
 static int
 optimizeLoop(int branchInstruction)
 {
@@ -984,7 +983,6 @@ optimizeLoop(int branchInstruction)
 	genInstruction(PushConstant, 0);
 	return 1;
 }
-#endif /* LATER */
 
 static int
 parseKeywordContinuation(void)
@@ -1005,14 +1003,12 @@ parseKeywordContinuation(void)
 			return controlFlow(BranchIfFalse, "", falseConst);
 		else if (strcmp(tokenBuffer, "or:") == 0)
 			return controlFlow(BranchIfTrue, "", trueConst);
-# if 0
 		else if ((strcmp(tokenBuffer, "whileTrue:") == 0) &&
 				blockbackup)
 			return optimizeLoop(BranchIfFalse);
 		else if ((strcmp(tokenBuffer, "whileFalse:") == 0) &&
 				blockbackup)
 			return optimizeLoop(BranchIfTrue);
-# endif
 		else
 		do{
 			strcat(messageBuffer, tokenBuffer);

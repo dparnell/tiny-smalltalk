@@ -530,6 +530,22 @@ execute(struct object *aProcess)
 		messageSelector = binaryMessages[low];
 		goto findMethodFromSymbol;
 
+/*
+ * Pull two integers of the required class as arguments from stack
+ */
+#define GET_HIGH_LOW(cl) \
+	op = stack->data[--stackTop]; \
+	if (op->class != cl) { \
+		stackTop -= 1; \
+		goto failPrimitive; \
+	} \
+	low = integerValue(op); \
+	op = stack->data[--stackTop]; \
+	if (op->class != cl) { \
+		goto failPrimitive; \
+	} \
+	high = integerValue(op);
+
             case DoPrimitive:
 			/* low is argument count */
 			/* next byte is primitive number */
@@ -639,22 +655,13 @@ execute(struct object *aProcess)
 				break;
 
 			case 10: 	/* small integer addition */
-				low = integerValue(stack->data[--stackTop]);
-				high = integerValue(stack->data[--stackTop]);
+				GET_HIGH_LOW(SmallIntClass);
 				high += low;
 				returnedValue = newInteger(high);
 				break;
 				
 			case 11: 	/* small integer division */
-				op = stack->data[--stackTop];
-				if (op->class != SmallIntClass) {
-					stackTop -= 1;
-					goto failPrimitive;
-				}
-				/* Don't need to check class, since */
-				/*  self got sent quo: to get here */
-				low = integerValue(op);
-				high = integerValue(stack->data[--stackTop]);
+				GET_HIGH_LOW(SmallIntClass);
 				if (low == 0) {
 					goto failPrimitive;
 				}
@@ -663,14 +670,7 @@ execute(struct object *aProcess)
 				break;
 				
 			case 12:	/* small integer remainder */ 
-				op = stack->data[--stackTop];
-				if (op->class != SmallIntClass) {
-					stackTop -= 1;
-					goto failPrimitive;
-				}
-				low = integerValue(op);
-				/* See comment for primitive 11 */
-				high = integerValue(stack->data[--stackTop]);
+				GET_HIGH_LOW(SmallIntClass);
 				if (low == 0) {
 					goto failPrimitive;
 				}
@@ -679,8 +679,7 @@ execute(struct object *aProcess)
 				break;
 				
 			case 13:	/* small integer less than */ 
-				low = integerValue(stack->data[--stackTop]);
-				high = integerValue(stack->data[--stackTop]);
+				GET_HIGH_LOW(SmallIntClass);
 				if (high < low) {
 					returnedValue = trueObject;
 				} else {
@@ -689,8 +688,7 @@ execute(struct object *aProcess)
 				break;
 
 			case 14:	/* small integer equality */ 
-				low = integerValue(stack->data[--stackTop]);
-				high = integerValue(stack->data[--stackTop]);
+				GET_HIGH_LOW(SmallIntClass);
 				if (high == low) {
 					returnedValue = trueObject;
 				} else {
@@ -699,17 +697,18 @@ execute(struct object *aProcess)
 				break;
 
 			case 15:	/* small integer multiplication */ 
-				low = integerValue(stack->data[--stackTop]);
-				high = integerValue(stack->data[--stackTop]);
+				GET_HIGH_LOW(SmallIntClass);
 				high *= low;
 				returnedValue = newInteger(high);
 				break;
 
 			case 16:	/* small integer subtraction */ 
-				low = integerValue(stack->data[--stackTop]);
-				high = integerValue(stack->data[--stackTop]);
-				if (low < high) high -= low;
-				else high = 0;
+				GET_HIGH_LOW(SmallIntClass);
+				if (low < high) {
+					high -= low;
+				} else {
+					high = 0;
+				}
 				returnedValue = newInteger(high);
 				break;
 
@@ -820,6 +819,7 @@ endPrimitive:
 		 * Done with primitive, continue execution loop
 		 */
 		break;
+#undef GET_HIGH_LOW
 
             case DoSpecial:
 		DBG1("DoSpecial", low);

@@ -51,10 +51,10 @@ CLASS MetaString    Class         MetaArray
 CLASS String        MetaString    Array
 CLASS MetaNumber   Class         MetaObject
 CLASS Number       MetaNumber   Magnitude
-CLASS MetaInteger   Class         MetaObject
-CLASS Integer       MetaInteger   Number
-CLASS MetaSmallInt  Class         MetaInteger
-CLASS SmallInt      MetaSmallInt  Integer
+COMMENT CLASS MetaInteger   Class         MetaObject
+COMMENT CLASS Integer       MetaInteger   Number            low high
+CLASS MetaSmallInt  Class         MetaNumber
+CLASS SmallInt      MetaSmallInt  Number
 CLASS MetaLink      Class         MetaObject
 CLASS Link          MetaLink      Object            value next
 CLASS MetaNode      Class         MetaObject
@@ -1119,11 +1119,49 @@ removeKey: key ifAbsent: exceptionBlock | position |
 			values <- values removeIndex: position]
 		ifFalse: [ ^ exceptionBlock value ]
 !
-COMMENT ---------- SmallInt ------------
-METHOD MetaSmallInt
+COMMENT ---------- Number ------------
+METHOD MetaNumber
 new
 	" can't create this way, return zero "
 	^ 0
+!
+METHOD Number
+negative
+	^self < 0
+!
+METHOD Number
+negated
+	^0-self
+!
+METHOD Number
+factorial
+	self <= 1 ifTrue: [ ^ 1 ]
+	ifFalse: [ ^ (self - 1) factorial * self ]
+!
+METHOD Number
+printString
+	(self negative) ifTrue: [ ^ '-' + (self negated printSTring) ].
+	(self < 10) ifTrue: [ ^ (Char new: (self + 48)) asString ].
+	^ (self quo: 10) printString + (self rem: 10) printString
+!
+METHOD Number
+to: limit
+	^ Interval from: self to: limit step: 1
+!
+METHOD Number
+to: limit by: step
+	^ Interval from: self to: limit by: step
+!
+METHOD Number
+to: limit do: aBlock  | i |
+		" optimize arithmetic loops "
+	i <- self.
+	[ i <= limit ] whileTrue: [ aBlock value: i. i <- i + 1 ]
+!
+COMMENT ---------- SmallInt ------------
+METHOD SmallInt
+asSmallInt
+	^self
 !
 METHOD SmallInt
 highOrder
@@ -1138,80 +1176,48 @@ negative
 	^ false
 !
 METHOD SmallInt
-factorial
-	self <= 1 ifTrue: [ ^ 1 ]
-	ifFalse: [ ^ (self - 1) factorial * self ]
-!
-METHOD SmallInt
 quo: arg
 	<11 self arg>
+	(arg isMemberOf: SmallInt) ifFalse: [^self quo: arg asSmallInt].
 	(0 = arg) ifTrue: [^ self error: 'division by zero'].
 	self primitiveFailed
 !
 METHOD SmallInt
 rem: arg
 	<12 self arg>
+	(arg isMemberOf: SmallInt) ifFalse: [^self rem: arg asSmallInt].
 	(0 = arg) ifTrue: [^ self error: 'division by zero'].
 	self primitiveFailed
 !
 METHOD SmallInt
 + arg
-	^ arg addToSmallInt: self
-!
-METHOD SmallInt
-addToSmallInt: arg
-	<10 arg self>
+	<10 self arg>
+	(arg isMemberOf: SmallInt) ifFalse: [^self + arg asSmallInt].
+	self primitiveFailed
 !
 METHOD SmallInt
 * arg
-	^ arg multBySmallInt: self
-!
-METHOD SmallInt
-multBySmallInt: arg
-	<15 arg self>
+	<15 self arg>
+	(arg isMemberOf: SmallInt) ifFalse: [^self * arg asSmallInt].
+	self primitiveFailed
 !
 METHOD SmallInt
 - arg
-	^ arg subtractFromSmallInt: self
-!
-METHOD SmallInt
-subtractFromSmallInt: arg
-	<16 arg self>
-!
-METHOD SmallInt
-negated
-	^ 0 - self
+	<16 self arg>
+	(arg isMemberOf: SmallInt) ifFalse: [^self - arg asSmallInt].
+	self primitiveFailed
 !
 METHOD SmallInt
 < arg
-	^ arg lessThanSmallInt: self
-!
-METHOD SmallInt
-lessThanSmallInt: arg
-	<13 arg self>
+	<13 self arg>
+	(arg isMemberOf: SmallInt) ifFalse: [^self < arg asSmallInt].
+	self primitiveFailed
 !
 METHOD SmallInt
 = arg
 	<14 self arg>
-!
-METHOD SmallInt
-printString
-	(self < 10) ifTrue: [ ^ (Char new: (self + 48)) asString ]
-	ifFalse: [ ^ (self quo: 10) printString + (self rem: 10) printString ]
-!
-METHOD SmallInt
-to: limit
-	^ Interval from: self to: limit step: 1
-!
-METHOD SmallInt
-to: limit by: step
-	^ Interval from: self to: limit by: step
-!
-METHOD SmallInt
-to: limit do: aBlock  | i |
-		" optimize arithmetic loops "
-	i <- self.
-	[ i <= limit ] whileTrue: [ aBlock value: i. i <- i + 1 ]
+	(arg isMemberOf: SmallInt) ifFalse: [^self = arg asSmallInt].
+	self primitiveFailed
 !
 COMMENT ---------- Nodes ------------
 METHOD MetaNode

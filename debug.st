@@ -32,12 +32,16 @@
  'where' or 'bt'	Show stack backtrace
  'l' or 'list'		List source (can provide a line # as argument)
  'whatis'		Describe variable more thoroughly
+ 'up', 'down'		Move up and down the call stack for purposes
+ 			of accessing variables.
+ 'debug'		Argument is a Class... compiles all Method's
+ 			for that class in their debuggable form.
  (blank line)		Re-enter previous command.  Useful for single
  			stepping statements in a row.
 "
 +Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
 +Method subclass: #DebugMethod variables: #(lines textlines vars bpoints active)
-+Object subclass: #Debug variables: #(proc bpoints prevList)
++Object subclass: #Debug variables: #(proc bpoints prevList selctx)
 !DebugEncoder
 name: n
 	" Hook to set up our instance variables "
@@ -115,6 +119,9 @@ setDebug: sel | meth cl dict |
 !
 !Debug
 runIt: count | ret |
+	" Blow away any selected context when we run "
+	selctx <- nil.
+
 	" Execute for one instruction.  Return whether or not the return
 	 was 'normal' (i.e., VM stopped due to debugger control, not
 	 something else.  Spit out a message for a breakpoint. "
@@ -155,9 +162,9 @@ forClass
 	^ class
 !
 !Debug
-srcLine | meth line |
+srcLine: ctx | meth line |
 	" Get source line corresponding to current byte pointer "
-	meth <- proc context method.
+	meth <- ctx method.
 
 	" Can't show it if this isn't a debuggable method "
 	(meth isKindOf: DebugMethod) ifFalse: [
@@ -166,15 +173,15 @@ srcLine | meth line |
 	].
 
 	" Return source line pointer or nil "
-	^ meth srcLine: proc context bytePointer.
+	^ meth srcLine: ctx bytePointer.
 !
+" Show current source line of a given context "
 !Debug
-showLine | ctx line meth |
+showLine: ctx | line meth |
 	" Show source line corresponding to current VM instruction "
-	ctx <- proc context.
 	ctx isNil ifTrue: [ ^ nil ].
 	meth <- ctx method.
-	line <- self srcLine.
+	line <- self srcLine: ctx.
 	line isNil
 		ifTrue: [
 			'Method ' print.  meth name print.
@@ -186,6 +193,11 @@ showLine | ctx line meth |
 			(line printString printWidth: 8) print.
 			(meth textlines at: line ifAbsent: ['']) printNl
 		]
+!
+" Display current line of active procedure "
+!Debug
+showLine
+	^ self showLine: self curContext
 !
 =Debug
 run: line | meth ret ctx proc |
@@ -264,7 +276,8 @@ onBreak | ctx meth rec |
 	meth <- ctx method.
 	1 to: bpoints size do: [:idx|
 		rec <- bpoints at: idx.
-		(((rec at: 1) = meth) and: [(rec at: 2) = self srcLine])
+		(((rec at: 1) = meth) and:
+				[(rec at: 2) = (self srcLine: ctx)])
 		ifTrue: [
 			'Breakpoint ' print. idx print. ' hit in ' print.
 			meth name printString print. '/' print.
@@ -281,7 +294,7 @@ overCall: pc | ctx old res meth |
 	meth <- ctx method.
 
 	" If we're within a non-debug Method, just limp forward "
-	(meth isKindOf: Debug Method) ifFalse: [
+	(meth isKindOf: DebugMethod) ifFalse: [
 		'Can''t step over calls in ' print. meth name print.
 		', single stepping.' printNl
 		self runIt: 1.
@@ -322,9 +335,9 @@ doStep: intoCalls | srcl ret ctx |
 	" Implement a single step, stepping either over or into calls
 	  (method invocations) depending on the intoCalls argument. "
 	ctx <- proc context.
-	srcl <- self srcLine.
-	[(proc context = ctx) and:
-			[srcl = self srcLine]] whileTrue: [
+	srcl <- self srcLine: ctx.
+	[(proc context == ctx) and:
+			[srcl == (self srcLine: ctx)]] whileTrue: [
 		" If dropping into a new method, deal with it "
 		ret <- self atCall.
 		ret notNil ifTrue: [
@@ -360,12 +373,17 @@ printReg: reg in: ctx
 	'Unknown register: ' print. reg print
 !
 !Debug
+curContext
+	selctx isNil ifTrue: [ ^ proc context ].
+	^ selctx
+!
+!Debug
 whatis: args | ctx meth |
 	" Display arguments, temporaries, instance variables, and
 	  VM registers. "
 
 	" Get the DebugMethod, which has symbolic information for variables "
-	ctx <- proc context.
+	ctx <- self curContext.
 	meth <- ctx method.
 	(meth isKindOf: DebugMethod) ifFalse: [
 		'No debug information for ' print.
@@ -390,7 +408,7 @@ examine: args | ctx meth |
 	  VM registers. "
 
 	" Get the DebugMethod, which has symbolic information for variables "
-	ctx <- proc context.
+	ctx <- self curContext.
 	meth <- ctx method.
 	(meth isKindOf: DebugMethod) ifFalse: [
 		'No debug information for ' print.
@@ -422,7 +440,7 @@ setBreak: args | s cl clname meth methname i rec lineNum inClass arg loc |
 			'Bad line #' print. arg printNl.
 			^ nil
 		].
-		meth <- proc context method.
+		meth <- self curContext method.
 		arg <- (meth forClass printString) + '/' +
 			(meth name printString) + '/' +
 			lineNum printString
@@ -543,11 +561,12 @@ breakActive: flag | meths |
 	meths do: [:meth| meth breakActive: flag]
 !
 !Debug
-list: args | meth where src |
+list: args | meth where src ctx |
 	" List source code "
 
 	" Get the method we're going to display "
-	meth <- proc context method.
+	ctx <- self curContext.
+	meth <- ctx method.
 	(meth isKindOf: DebugMethod) ifFalse: [
 		'No debug information' printNl.
 		^ self
@@ -557,7 +576,7 @@ list: args | meth where src |
 	(args size < 1) ifTrue: [
 		prevList isNil ifTrue: [
 			" List around where we're currently executing "
-			where <- self srcLine - 5
+			where <- (self srcLine: ctx) - 5
 		] ifFalse: [
 			where <- prevList + 1
 		]
@@ -580,6 +599,81 @@ list: args | meth where src |
 		]
 	]
 !
+
+" nextContext:
+	Return next context deeper in context stack
+
+  Because contexts are only forward linked, we have to search from
+  the top inward, then return the next one out.
+"
+!Debug
+nextContext: ctx | c prev |
+	c <- proc context.
+	[(prev <- c previousContext) ~= ctx] whileTrue: [
+		prev isNil ifTrue: [ ^ nil ].
+		c <- prev
+	].
+	^ c
+!
+
+" upDown:count:
+	Move up or down the stack frames
+"
+!Debug
+upDown: up count: args | c count |
+	" If nothing selected, start from bottom of stack "
+	selctx <- self curContext.
+
+	" Get count, default 1 "
+	(args size > 0) ifTrue: [
+		count <- (args at: 1) asNumber
+	] ifFalse: [
+		count <- 1
+	].
+
+	" Walk the context chain "
+	1 to: count do: [:ignore|
+		" Get next/prev context depending on step direction "
+		up ifTrue: [
+			c <- selctx previousContext
+		] ifFalse: [
+			c <- self nextContext: selctx
+		].
+
+		" Just ignore running off the end "
+		c isNil ifFalse: [ selctx <- c ]
+	]
+!
+
+" makeDebug:
+	Convert Class methods to DebugMethod's
+"
+!Debug
+makeDebug: args | cl meta n |
+	args do: [:clname|
+		" Map MetaFOO -> FOO class "
+		((clname from: 1 to: 4) = 'Meta') ifTrue: [
+			n <- clname from: 5.
+			meta <- true
+		] ifFalse: [
+			n <- clname.
+			meta <- false
+		].
+
+		" Look up class "
+		cl <- Smalltalk at: n asSymbol ifAbsent: [ nil ].
+		cl isNil
+		 ifTrue: [ ('Unknown class: ' + clname) printNl ]
+		 ifFalse: [
+			" Map to metaclass if needed "
+			meta ifTrue: [ cl <- cl class ].
+
+			" Convert methods "
+			cl methods keysDo: [:k| cl setDebug: k ]
+		 ]
+	]
+!
+
 !Debug
 run | prev did cmd done line |
 	" Main command loop for the debugger session "
@@ -714,6 +808,18 @@ run | prev did cmd done line |
 			] ifFalse: [
 				proc context backtrace
 			].
+			did <- true
+		].
+
+		" Go up or down the stack chain "
+		((cmd = 'up') or: [cmd = 'down']) ifTrue: [
+			self upDown: (cmd = 'up') count: line.
+			did <- true
+		].
+
+		" Make all procedures of the named class debuggable "
+		(cmd = 'debug') ifTrue: [
+			self makeDebug: line.
 			did <- true
 		].
 

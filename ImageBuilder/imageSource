@@ -123,6 +123,10 @@ print
 	self printString do: [ :c | c print ]
 !
 METHOD Object
+printNl
+	self print. Char newline print
+!
+METHOD Object
 question: text	| answer |
 	text print.
 	answer <- String input.

@@ -240,6 +240,88 @@ do_Integer(int op, struct object *low, struct object *high)
 	return(NULL);
 }
 
+/*
+ * bulkReplace()
+ *	Implement replaceFrom:to:with:startingAt: as a primitive
+ *
+ * Return 1 if we couldn't do it, 0 on success.  This routine has
+ * distinct code paths for plain old byte type arrays, and for
+ * arrays of object pointers; the latter must handle the special
+ * case of static pointers.  It looks hairy (and it is), but it's
+ * still much faster than executing the block move in Smalltalk
+ * VM opcodes.
+ */
+static int
+bulkReplace(struct object *dest, struct object *start,
+	struct object *stop, struct object *src,
+	struct object *repStart)
+{
+	int irepStart, istart, istop, count;
+
+	/*
+	 * We only handle simple 31-bit integer indices.  Map the
+	 * values onto 0-based C array type values.
+	 */
+	if (!IS_SMALLINT(repStart) || !IS_SMALLINT(start) ||
+			!IS_SMALLINT(stop)) {
+		return(1);
+	}
+	irepStart = integerValue(repStart)-1;
+	istart = integerValue(start)-1;
+	istop = integerValue(stop)-1;
+	count = (istop-istart) + 1;
+
+	/*
+	 * Defend against goofy negative indices.
+	 */
+	if ((irepStart < 0) || (istart < 0) || (istop < 0) ||
+			(count < 1)) {
+		return(1);
+	}
+
+	/*
+	 * Range check
+	 */
+	if ((SIZE(dest) < istop) ||
+			(SIZE(src) < (irepStart + count))) {
+		return(1);
+	}
+
+	/*
+	 * If both source and dest are binary, do a bcopy()
+	 */
+	if ((src->size & FLAG_BIN) && (dest->size & FLAG_BIN)) {
+		/*
+		 * Do it.
+		 */
+		bcopy(bytePtr(src) + irepStart, bytePtr(dest) + istart,
+			count);
+		return(0);
+	}
+
+	/*
+	 * If not both regular storage, fail
+	 */
+	if ((src->size & FLAG_BIN) || (dest->size & FLAG_BIN)) {
+		return(1);
+	}
+
+	/*
+	 * If we're fiddling pointers between static and dynamic memory,
+	 * let the VM-based implementation deal with it.
+	 */
+	if (isDynamicMemory(src) != isDynamicMemory(dest)) {
+		return(1);
+	}
+
+	/*
+	 * Copy object pointer fields
+	 */
+	bcopy(&src->data[irepStart], &dest->data[istart],
+		BytesPerWord * count);
+	return(0);
+}
+
 /* Code locations are extracted as VAL's */
 #define VAL (bp[bytePointer] | (bp[bytePointer+1] << 8))
 #define VALSIZE 2
@@ -996,6 +1078,17 @@ checkCache:
 		returnedValue = newInteger(integerValue(op) & high);
 		break;
 
+	    case 38:	/* replaceFrom:... */
+		returnedValue = stack->data[--stackTop];
+	    	if (bulkReplace(returnedValue,
+			stack->data[--stackTop],
+			stack->data[--stackTop],
+			stack->data[--stackTop],
+			stack->data[--stackTop])) {
+		    goto failPrimitive;
+		}
+		break;
+
 	    default:
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;
@@ -1007,7 +1100,7 @@ checkCache:
 				    stack->data[--stackTop];
 		    }
 		    {
-			    int failed;
+			int failed;
 
 			returnedValue =
 				primitive(high, arguments, &failed);

@@ -831,6 +831,10 @@ removeIndex: position  | newArray |
 		[:i | newArray at: i+i put: (self at: i)].
 	^ newArray
 !
+METHOD Array
+first
+	^self at: 1
+!
 COMMENT ---------- OrderedArray ------------
 METHOD OrderedArray
 add: value
@@ -993,6 +997,16 @@ METHOD String
 copy
 	" make a clone of ourself "
 	<23 self String>
+!
+METHOD String
+asNumber | val |
+	" parse a base-10 ASCII number, return nil on failure "
+	val <- 0.
+	self do: [:c|
+		c isDigit ifFalse: [^nil].
+		val <- (val * 10) + (c value - 48)
+	].
+	^val
 !
 COMMENT --------- List -----------
 METHOD MetaList
@@ -1874,9 +1888,8 @@ readLiteral   | node |
 !
 METHOD Parser
 readInteger  | value |
-	tokenType isDigit ifFalse: [ self error: 'integer expected' ].
-	value <- 0.
-	token do: [:c | value <- value * 10 + (c value - 48) ].
+	value <- token asNumber.
+	value isNil ifTrue: [ self error: 'integer expected' ].
 	self nextLex.
 	^ value
 !

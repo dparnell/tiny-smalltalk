@@ -61,11 +61,54 @@ run: args on: obj | t cl |
 	]
 !
 
+" scan:count:
+	Internal step for choosing across a range of elements
+
+ Returns a boolean for whether or not the scan should end.
+"
+!Browser
+scan: elems count: count | c |
+	[ true ] whileTrue: [
+		c <- String input at: 1.
+		(c = $q) ifTrue: [ ^ true ].
+		(c = $ ) ifTrue: [ ^ false ].
+		(c = 10 asChar) ifFalse: [
+			((c >= $0) and: [c < (48 + count) asChar]) ifTrue: [
+				stack <- stack with:
+					(elems at: (c value - 47)).
+				^ true
+			].
+'Enter [ ] (space) to continue, [q]uit, or an index from 0 to ' print.
+(47 + count) asChar printNl.
+		]
+	]
+!
+
+" scan:
+	Scan across contents of object
+"
+!Browser
+scan: obj | count elems |
+	elems <- Array new: 10.
+	count <- 0.
+	obj do: [:o|
+		((48 + count) asChar asString + ': ') print.
+		count <- count + 1.
+		elems at: count put: o.
+		o printNl.
+		(count >= 10) ifTrue: [
+			(self scan: elems count: 10) ifTrue: [ ^ nil ].
+			count <- 0
+		]
+	].
+	(count > 0) ifTrue: [ self scan: elems count: count ]
+!
+
 " on:
 	Main UI loop for browser
 "
 !Browser
-on: top | cmd done last obj args idx |
+on: top | cmd done obj args idx |
 	stack <- Array with: top.
 	[true] whileTrue: [
 		" Show where we are and get next command "
@@ -85,16 +128,8 @@ on: top | cmd done last obj args idx |
 
 		" Index with at: "
 		((cmd = 'i') or: [cmd = 'index']) ifTrue: [
-			last <- stack at: (stack size).
 			idx <- (args at: 1) asNumber.
-			last <- last at: idx.
-			last printNl.
-			done <- true
-		].
-
-		" Nest to last displayed object "
-		((cmd = 'n') or: [cmd = 'nest']) ifTrue: [
-			stack <- stack with: last.
+			stack <- stack with: (obj at: idx).
 			done <- true
 		].
 
@@ -117,8 +152,7 @@ on: top | cmd done last obj args idx |
 		" Raw index "
 		(cmd = 'ri') ifTrue: [
 			idx <- (args at: 1) asNumber.
-			last <- Object in: obj at: idx.
-			last printNl.
+			stack <- stack with: (Object in: obj at: idx).
 			done <- true
 		].
 
@@ -144,6 +178,16 @@ on: top | cmd done last obj args idx |
 			done <- true
 		].
 
+		" Scan across contents "
+		((cmd = 'z') or: [cmd = 'scan']) ifTrue: [
+			(obj respondsTo: #do:) ifTrue: [
+				self scan: obj
+			] ifFalse: [
+				'Not enumerable with do:' printNl.
+			].
+			done <- true
+		].
+
 		" All done "
 		((cmd = 'q') or: [cmd = 'quit']) ifTrue: [
 			^ nil
@@ -154,7 +198,6 @@ on: top | cmd done last obj args idx |
 'Commands are:' printNl.
 'i/index <number> - Index Array-type object' printNl.
 'ri <number>      - Raw index into object''s instance vars' printNl.
-'n/nest           - Nest to last displayed object' printNl.
 'c/class          - Display class of current object' printNl.
 'u/up             - Unnest to previous object' printNl.
 'iv/ivars         - List instance vars' printNl.
@@ -162,6 +205,7 @@ on: top | cmd done last obj args idx |
 'sz/size          - Show size' printNl.
 'p/print <expr>   - Print arbitrary expression' printNl.
 'q/quit           - Return to system' printNl.
+'z/scan           - Scan across elements of a Collection using do:' printNl.
 '?/help           - This display' printNl.
 			done <- true
 		].

@@ -774,8 +774,8 @@ new
 	^ self error: 'array values cannot be created with new'
 !
 METHOD MetaArray
-new: size
-	<7 self size>
+new: sz
+	<7 self sz>
 !
 METHOD Array
 badIndex
@@ -1112,7 +1112,7 @@ badIndex
 	self error: 'Invalid List index'
 !
 METHOD List
-findLink: index | idx link |
+findLink: index ifAbsent: aBlock | idx link |
 	link <- elements.
 	idx <- index.
 	link isNil ifTrue: [ self emptyList ].
@@ -1121,11 +1121,17 @@ findLink: index | idx link |
 		(idx = 0) ifTrue: [ ^ link ].
 		link <- link next
 	].
-	self badIndex
+	^ aBlock value
 !
 METHOD List
 at: index | link |
-	link <- self findLink: index.
+	link <- self findLink: index ifAbsent: [ self badIndex ].
+	^ link value
+!
+METHOD List
+at: index ifAbsent: aBlock | link |
+	link <- self findLink: index ifAbsent: [nil].
+	link isNil ifTrue: [ ^ aBlock value ].
 	^ link value
 !
 METHOD List

@@ -175,11 +175,7 @@ flushCache(void)
 	int i;
 
 	for (i = 0; i < cacheSize; i++) {
-		if (isDynamicMemory(cache[i].method)
-			|| isDynamicMemory(cache[i].class)
-			|| isDynamicMemory(cache[i].name)) {
-				cache[i].name = 0;	/* force refill */
-		}
+		cache[i].name = 0;	/* force refill */
 	}
 }
 

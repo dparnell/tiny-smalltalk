@@ -68,7 +68,7 @@ CLASS Association	MetaAssociation	Magnitude	value key
 CLASS MetaTree		Class		MetaObject
 CLASS Tree		MetaTree	Collection	root
 COMMENT ---------- Classes having to do with parsing ------------
-CLASS Parser Class Object text index tokenType token argNames tempNames instNames maxTemps errBlock
+CLASS Parser Class Object text index tokenType token argNames tempNames instNames maxTemps errBlock lineNum
 CLASS ParserNode Class Object
 CLASS Encoder Class Object name byteCodes index literals stackSize maxStack
 CLASS BodyNode Class ParserNode statements
@@ -258,7 +258,7 @@ addMethod: text | meth |
 	meth <- self parseMethod: text.
 	meth notNil
 		ifTrue: [ methods at: meth name put: meth.
-		^ 'method inserted:' + meth name printString ]
+		^ 'method inserted: ' + meth name printString ]
 !
 METHOD Class
 view: methodName
@@ -416,7 +416,7 @@ METHOD Process
 execute: aContext	| r |
 	context <- aContext.
 	r <- self doExecute: 0.
-	(r = 3) ifTrue: [ 'Message not understood:' print.
+	(r = 3) ifTrue: [ 'Message not understood: ' print.
 			result print.  Char newline print ]
 	(r = 4) ifTrue: [ ^ result ]
 		ifFalse: [ 'Backtrace:' print. Char newline print.
@@ -604,6 +604,11 @@ tab
 	^ self new: 9
 !
 METHOD MetaChar
+eof
+		" return an EOF indication--not a true Char, but polymorphic "
+	^ self new: 256
+!
+METHOD MetaChar
 doInput
 	<9>
 !
@@ -635,6 +640,10 @@ isUpperCase
 METHOD Char
 isAlphabetic
 	^ self isLowerCase or: [ self isUpperCase ]
+!
+METHOD Char
+isEOF
+	^ value = 256
 !
 METHOD Char
 lowerCase
@@ -1750,6 +1759,7 @@ METHOD Parser
 text: aString instanceVars: anArray
 	text <- aString.
 	index <- 1.
+	lineNum <- 1.
 	argNames <- Array new: 1.
 	argNames at: 1 put: #self.
 	instNames <- anArray.
@@ -1769,25 +1779,30 @@ parse: c	| encoder |
 !
 METHOD Parser
 error: aString
-	'compiler error ' print.
+	'Compile error near line ' print.
+	lineNum printString print.
+	': ' print.
 	aString print.
 	Char newline print.
 	errBlock value
 !
 METHOD Parser
 currentChar
-	^ text at: index ifAbsent: [ nil ]
+	^ text at: index ifAbsent: [ Char eof ]
 !
 METHOD Parser
 nextChar
+	(self currentChar = Char newline) ifTrue: [
+		lineNum <- lineNum + 1
+	].
 	index <- index + 1.
-	^ text at: index ifAbsent: [ $  ]
+	^ self currentChar
 !
 METHOD Parser
 nextLex	
 	self skipBlanks.
 	tokenType <- self currentChar.
-	tokenType isNil   " end of input "
+	tokenType isEOF   " end of input "
 		ifTrue: [ tokenType <- $  . token <- nil. ^ nil ].
 	tokenType isDigit ifTrue: [ ^ self lexInteger ].
 	tokenType isAlphabetic ifTrue: [ ^ self lexAlphabetic ].
@@ -1795,18 +1810,14 @@ nextLex
 !
 METHOD Parser
 skipBlanks  | cc |
-	[ cc <- self currentChar.
-	  cc notNil and: [ cc isBlank ] ]
-			whileTrue: [ index <- index + 1 ].
-	(cc notNil and: [ cc = $" ] )
-		ifTrue: [ self skipComment ]
+	cc <- self currentChar.
+	[ cc isBlank ] whileTrue: [ cc <- self nextChar ].
+	( cc = $" ) ifTrue: [ self skipComment ]
 !
 METHOD Parser
 skipComment  | cc |
-	[ index <- index + 1.
-	  cc <- self currentChar.
-	  cc isNil
-		ifTrue: [ ^ self error: 'unterminated comment'].
+	[ cc <- self nextChar.
+	  cc isEOF ifTrue: [ ^ self error: 'unterminated comment'].
 	  cc ~= $" ] whileTrue: [ nil ].
 	self nextChar. self skipBlanks
 !
@@ -1980,7 +1991,7 @@ nameNode: name
 	^ LiteralNode new;
 		value: (globals at: name
 			ifAbsent: [ ^ self error:
-				'unrecognized name:' + name printString ])
+				'unrecognized name: ' + name printString ])
 !
 METHOD Parser
 readLiteral   | node |
@@ -1995,7 +2006,7 @@ readLiteral   | node |
 		ifTrue: [ ^ self readString ].
 	tokenType = $#
 		ifTrue: [ ^ self readSymbol ].
-	self error: 'invalid literal:' + token
+	self error: 'invalid literal: ' + token
 !
 METHOD Parser
 readInteger  | value |

@@ -1341,9 +1341,21 @@ indexOf: val | c s |
 !
 COMMENT --------- List -----------
 METHOD MetaList
-with: firstElement	| newList |
+with: elemA	| newList |
 	newList <- self new.
-	newList add: firstElement.
+	newList add: elemA.
+	^ newList
+!
+METHOD MetaList
+with: elemA with: elemB	| newList |
+	newList <- self new.
+	newList add: elemB.  newList add: elemA.
+	^ newList
+!
+METHOD MetaList
+with: elemA with: elemB with: elemC	| newList |
+	newList <- self new.
+	newList add: elemC.  newList add: elemB.  newList add: elemA.
 	^ newList
 !
 METHOD List
@@ -1537,6 +1549,24 @@ new: size | ret |
 	ret <- super new.
 	self in: ret at: 1 put: (Array new: size).
 	self in: ret at: 2 put: size.
+	^ ret
+!
+METHOD MetaSet
+with: objA | ret |
+	ret <- self new.
+	ret add: objA.
+	^ ret
+!
+METHOD MetaSet
+with: objA with: objB | ret |
+	ret <- self new.
+	ret add: objA. ret add: objB.
+	^ ret
+!
+METHOD MetaSet
+with: objA with: objB with: objC | ret |
+	ret <- self new.
+	ret add: objA. ret add: objB. ret add: objC.
 	^ ret
 !
 METHOD MetaSet

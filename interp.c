@@ -727,16 +727,15 @@ int execute (struct object * aProcess)
 				arguments = 0;
 				break;
 			}
-		if (context != rootStack[--rootTop]) { /* gc has occurred */
-			context = rootStack[rootTop];
-			method = context->data[methodInContext];
-			stack = context->data[stackInContext];
-			bp = bytePtr(method->data[byteCodesInMethod]);
-			arguments = temporaries = literals = 
-				instanceVariables = 0;
-			}
-		stack->data[stackTop++] = returnedValue;
-		endPrimitive:
+
+			/*
+			 * Drop our context pointer from the rootStack,
+			 * then return from this context due to a
+			 * successful primitive.
+			 */
+			rootTop -= 1;
+			goto doReturn;
+endPrimitive:
 		break;
 
             case DoSpecial:
@@ -751,9 +750,9 @@ int execute (struct object * aProcess)
                     case StackReturn:
 			returnedValue = stack->data[--stackTop];
 
-		    doReturn:
+doReturn:
 			context = context->data[previousContextInContext];
-		    doReturn2:
+doReturn2:
 			if ((context == 0) || (context == nilObject)) {
 				aProcess = rootStack[--rootTop];
 				aProcess->data[contextInProcess] = context;

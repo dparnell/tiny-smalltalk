@@ -158,7 +158,7 @@ debug
 	<18>
 !
 METHOD Object
-primitiveFAiled
+primitiveFailed
 	self error: 'Primitive failed'
 !
 COMMENT ---------Class-------------------

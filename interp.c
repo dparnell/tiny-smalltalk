@@ -563,7 +563,7 @@ execute(struct object *aProcess)
 				returnedValue = newInteger(high);
 				break;
 
-			case 5:		/* object at put */
+			case 5:		/* Array at put */
 				low = integerValue(stack->data[--stackTop])-1;
 				returnedValue = stack->data[--stackTop];
 				/* Bounds check */
@@ -732,16 +732,25 @@ execute(struct object *aProcess)
 				break;
 
 			case 21:	/* string at */
-				low = integerValue(stack->data[--stackTop]);
+				low = integerValue(stack->data[--stackTop])-1;
 				returnedValue = stack->data[--stackTop];
-				low = bytePtr(returnedValue)[low-1];
+				if ((low < 0) ||
+				 (low >= (returnedValue->size >> 2))) {
+				 	goto failPrimitive;
+				}
+				low = bytePtr(returnedValue)[low];
 				returnedValue = newInteger(low);
 				break;
 
 			case 22:	/* string at put */
-				low = integerValue(stack->data[--stackTop]);
+				low = integerValue(stack->data[--stackTop])-1;
 				returnedValue = stack->data[--stackTop];
-				bytePtr(returnedValue)[low-1] =
+				if ((low < 0) ||
+				 (low >= (returnedValue->size >> 2))) {
+					stackTop -= 1;
+				 	goto failPrimitive;
+				}
+				bytePtr(returnedValue)[low] =
 					integerValue(stack->data[--stackTop]);
 				break;
 

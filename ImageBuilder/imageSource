@@ -872,26 +872,27 @@ new: size
 METHOD ByteArray
 basicAt: index
 	<21 self index>
+	^nil
 !
 METHOD ByteArray
 at: index
 	^self at: index ifAbsent: [self badIndex]
 !
 METHOD ByteArray
-at: index ifAbsent: exceptionBlock
-	(self includesKey: index)
-	     ifTrue: [ ^ self basicAt: index ]
-	     ifFalse: [ ^ exceptionBlock value ]
+at: index ifAbsent: exceptionBlock | b |
+	b <- self basicAt: index.
+	(b isNil) ifTrue: [ ^ exceptionBlock value ].
+	^b
 !
 METHOD ByteArray
 basicAt: index put: value
 	<22 value self index>
+	^nil
 !
 METHOD ByteArray
 at: index put: aValue
-	(self includesKey: index)
-		ifTrue: [self basicAt: index put: aValue]
-		ifFalse: [self error: 'byte array indexing error' ]
+	(self basicAt: index put: aValue) isNil
+		ifTrue: [self badIndex ]
 !
 COMMENT ---------- Strings ------------
 METHOD MetaString
@@ -968,26 +969,29 @@ doIt	| meth |
 METHOD String
 basicAt: index
 	<21 self index>
+	^nil
 !
 METHOD String
 at: index
 	^self at: index ifAbsent: [ self badIndex ]
 !
 METHOD String
-at: index ifAbsent: exceptionBlock
-	(self includesKey: index)
-	     ifTrue: [ ^ Char new: (self basicAt: index) ]
-	     ifFalse: [ ^ exceptionBlock value ]
+at: index ifAbsent: exceptionBlock | c |
+	c <- self basicAt: index.
+	(c isNil)
+	     ifTrue: [ ^ exceptionBlock value ]
+	     ifFalse: [ ^ Char new: c ]
 !
 METHOD String
 basicAt: index put: value
 	<22 value self index>
+	^nil
 !
 METHOD String
 at: index put: aValue
-	(self includesKey: index)
-		ifTrue: [self basicAt: index put: aValue value]
-		ifFalse: [self error: 'string indexing error' ]
+	(self basicAt: index put: aValue value) isNil ifTrue: [
+		self badIndex
+	]
 !
 METHOD String
 copy

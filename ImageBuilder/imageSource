@@ -182,6 +182,10 @@ basicSize
 	<4 self>.
 	self primitiveFailed
 !
+METHOD Object
+subclassResponsibility
+	self error: 'Subclass responsibility'
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v
@@ -875,6 +879,10 @@ anyOne
 METHOD Collection
 emptyCollection
 	self error: (self class printString + ' is empty')
+!
+METHOD Collection
+do: aBlock
+	self subclassResponsibility
 !
 COMMENT ---------- Array ------------
 METHOD MetaArray

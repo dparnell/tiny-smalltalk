@@ -1981,8 +1981,9 @@ addTempName: name
 	maxTemps <- maxTemps max: tempNames size
 !
 METHOD Parser
-readBody
-	^ (BodyNode at: lineNum) statements: self readStatementList
+readBody | lnum |
+	lnum <- lineNum.
+	^ (BodyNode at: lnum) statements: self readStatementList
 !
 METHOD Parser
 readStatementList   | list |
@@ -1995,22 +1996,23 @@ readStatementList   | list |
 	^ list
 !
 METHOD Parser
-readStatement
+readStatement | lnum |
 	tokenType = $^
-		ifTrue: [ self nextLex.
-			^ (ReturnNode at: lineNum)
+		ifTrue: [ lnum <- lineNum. self nextLex.
+			^ (ReturnNode at: lnum)
 				expression: self readExpression ].
 	^ self readExpression
 !
 METHOD Parser
-readExpression   | node |
+readExpression   | node lnum |
 	self tokenIsName ifFalse: [ ^ self readCascade: self readTerm ].
 	node <- self nameNode: token asSymbol. self nextLex.
 	self tokenIsArrow
 		ifTrue: [ node assignable
 				ifFalse: [ self error: 'illegal assignment'].
+			lnum <- lineNum.
 			self nextLex.
-			^ (AssignNode at: lineNum) target:
+			^ (AssignNode at: lnum) target:
 				node expression: self readExpression ].
 	^ self readCascade: node
 !
@@ -2020,7 +2022,7 @@ tokenIsArrow
 	^ token = '<-'
 !
 METHOD Parser
-readTerm   | node |
+readTerm   | node lnum |
 	token isNil
 		ifTrue: [ self error: 'unexpected end of input' ].
 	tokenType = $(
@@ -2033,7 +2035,8 @@ readTerm   | node |
 	self tokenIsName
 		ifTrue: [ node <- self nameNode: token asSymbol.
 			self nextLex. ^ node ].
-	^ (LiteralNode at: lineNum) value: self readLiteral
+	lnum <- lineNum.
+	^ (LiteralNode at: lnum) value: self readLiteral
 !
 METHOD Parser
 nameNode: name
@@ -2117,18 +2120,20 @@ arrayLiteral	| node |
 	^ self readLiteral
 !
 METHOD Parser
-readPrimitive  | num args |
+readPrimitive  | num args lnum |
+	lnum <- lineNum.
 	self nextLex.
 	num <- self readInteger.
 	args <- List new.
 	[ tokenType ~= $> ]
 		whileTrue: [ args add: self readTerm ].
 	self nextLex.
-	^ (PrimitiveNode at: lineNum) number: num arguments: args
+	^ (PrimitiveNode at: lnum) number: num arguments: args
 !
 METHOD Parser
-readBlock    | stmts saveTemps |
+readBlock    | stmts saveTemps lnum |
 	saveTemps <- tempNames.
+	lnum <- lineNum.
 	self nextLex.
 	tokenType = $:
 		ifTrue: [ self readBlockTemporaries ].
@@ -2136,7 +2141,7 @@ readBlock    | stmts saveTemps |
 	tempNames <- saveTemps.
 	tokenType = $]
 		ifTrue: [ self nextLex.
-			^ (BlockNode at: lineNum) statements: stmts
+			^ (BlockNode at: lnum) statements: stmts
 				temporaryLocation: saveTemps size ]
 		ifFalse: [ self error: 'unterminated block']
 !
@@ -2168,35 +2173,38 @@ readCascade: base   | node list |
 	^ node
 !
 METHOD Parser
-keywordContinuation: base  | receiver name args |
+keywordContinuation: base  | receiver name args lnum |
 	receiver <- self binaryContinuation: base.
 	self tokenIsKeyword
 		ifFalse: [ ^ receiver ].
 	name <- ''.
 	args <- List new.
+	lnum <- lineNum.
 	[ self tokenIsKeyword ]
 		whileTrue: [ name <- name + token. self nextLex.
 			args add:
 				(self binaryContinuation: self readTerm) ].
-	^ (MessageNode at: lineNum) receiver:
+	^ (MessageNode at: lnum) receiver:
 		receiver name: name asSymbol arguments: args
 !
 METHOD Parser
-binaryContinuation: base | receiver name |
+binaryContinuation: base | receiver name lnum |
 	receiver <- self unaryContinuation: base.
 	[ self tokenIsBinary]
-		whileTrue: [ name <- token asSymbol. self nextLex.
-			receiver <- (MessageNode at: lineNum)
+		whileTrue: [ lnum <- lineNum.
+			name <- token asSymbol. self nextLex.
+			receiver <- (MessageNode at: lnum)
 				receiver: receiver name: name arguments:
 					(List with:
 						(self unaryContinuation: self readTerm)) ].
 	^ receiver
 !
 METHOD Parser
-unaryContinuation: base | receiver |
+unaryContinuation: base | receiver lnum |
 	receiver <- base.
 	[ self tokenIsName ]
-		whileTrue: [ receiver <- (MessageNode at: lineNum)
+		whileTrue: [ lnum <- lineNum.
+			receiver <- (MessageNode at: lnum)
 				receiver: receiver name: token asSymbol
 					arguments: (List new).
 				self nextLex ].

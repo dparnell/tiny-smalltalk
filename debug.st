@@ -36,6 +36,8 @@
  			of accessing variables.
  'debug'		Argument is a Class... compiles all Method's
  			for that class in their debuggable form.
+ 'br' or 'browse'	Argument is variable as in 'print'; invokes
+			system data structure browser.
  (blank line)		Re-enter previous command.  Useful for single
  			stepping statements in a row.
 "
@@ -823,6 +825,12 @@ run | prev did cmd done line |
 			did <- true
 		].
 
+		" Hook to data structure browser "
+		((cmd = 'br') or: [cmd = 'browse']) ifTrue: [
+			self browse: line.
+			did <- true
+		].
+
 		" Error "
 		did ifFalse: [ 'Unknown command.' printNl ].
 	]
@@ -932,27 +940,32 @@ whatis: var in: ctx | idx obj |
 	]
 !
 !DebugMethod
-print: var in: ctx | idx obj |
-	" Print a variable in this Method "
+getVar: var in: ctx | idx |
+	" Get a variable in this Method, return its value "
 
 	" Name of an argument "
 	idx <- (vars at: 1) indexOfVal: var.
-	idx notNil ifTrue: [ (ctx arguments at: idx) print. ^ nil ].
+	idx notNil ifTrue: [ ^ (ctx arguments at: idx) ].
 
 	" Instance variable "
 	idx <- (vars at: 2) indexOfVal: var.
 	idx notNil ifTrue: [
-		obj <- ctx arguments at: 1.
-		(Object class in: obj at: idx) print.
-		^ nil
+		^ (Object in: (ctx arguments at: 1) at: idx)
 	].
 
 	" Temporary "
 	idx <- (vars at: 3) indexOfVal: var.
-	idx notNil ifTrue: [ (ctx temporaries at: idx) print. ^ nil ].
+	idx notNil ifTrue: [ ^ (ctx temporaries at: idx) ].
 
 	" Couldn't find it... "
-	'Unknown variable' print
+	^ nil
+!
+!DebugMethod
+print: var in: ctx | obj |
+	" Print a variable in this Method "
+	obj <- self getVar: var in: ctx.
+	obj isNil ifTrue: [ ('Unknown variable: ' + var) printNl ]
+	 ifFalse: [ obj printNl ]
 !
 !DebugMethod
 setBreak: bp | old |
@@ -1021,4 +1034,23 @@ codeLoc: line | set ret |
 	ret <- set anyOne.
 	set do: [:elem| ret <- ret min: elem].
 	^ ret
+!
+!Debug
+browse: args | meth br ctx |
+	" Get the DebugMethod, which has symbolic information for variables "
+	ctx <- self curContext.
+	meth <- ctx method.
+	(meth isKindOf: DebugMethod) ifFalse: [
+		'No debug information for ' print.
+		meth name printNl.
+		^ nil
+	].
+
+	" See if Browser is installed "
+	br <- Smalltalk at: #Browser ifAbsent: [
+		'Browser not installed.' printNl.
+		^ nil
+	].
+
+	^ br on: (meth getVar: (args at: 1) in: ctx)
 !

@@ -78,7 +78,7 @@ runIt: count | ret |
 	(ret = 2) ifTrue: [ 'Error trap' printNl ].
 	(ret = 3) ifTrue: [ 'Message not understood' printNl ].
 	(ret = 4) ifTrue: [ 'Method returned' printNl ].
-	(ret = 6) ifTrue: [ 'Breakpoint' printNl ].
+	" (ret = 6) ifTrue: [ 'Breakpoint' printNl ]. "
 	^ false
 !
 !Context

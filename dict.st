@@ -78,9 +78,9 @@ rotorDo: aBlock | start lim assoc |
 	rotor isNil ifTrue: [ rotor <- 1 ].
 	start <- rotor.
 	[true] whileTrue: [
-		(rotor > lim) ifTrue: [ rotor <- 1 ].
 		assoc <- members at: rotor.
 		rotor <- rotor + 1.
+		(rotor > lim) ifTrue: [ rotor <- 1 ].
 		assoc notNil ifTrue: [ aBlock value: assoc ].
 		(rotor = start) ifTrue: [ ^ self ]
 	]

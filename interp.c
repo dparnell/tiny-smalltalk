@@ -18,10 +18,11 @@
     otherwise simply loops until time slice has ended
 */
 
-# include "memory.h"
-# include "interp.h"
-# include "globs.h"
-# include <stdio.h>
+#include "memory.h"
+#include "interp.h"
+#include "globs.h"
+#include <stdio.h>
+#include <string.h>	/* For bzero() */
 
 extern int debugging;
 extern int cacheHit;
@@ -342,15 +343,18 @@ execute(struct object *aProcess)
 			/* next byte is goto value */
 		high = bp[bytePointer++];
 		rootStack[rootTop++] = context;
-		rootStack[rootTop++] = 
-			gcalloc(integerValue(method->data[stackSizeInMethod]));
-		rootStack[rootTop++] = newInteger(low);
-		rootStack[rootTop++] = newInteger(bytePointer);
+		op = rootStack[rootTop++] = 
+		 gcalloc(x = integerValue(method->data[stackSizeInMethod]));
+		op->class = NULL;
+		bzero(bytePtr(op), x * BytesPerWord);
 		returnedValue = gcalloc(blockSize);
 		returnedValue->class = BlockClass;
-		returnedValue->data[bytePointerInBlock] = rootStack[--rootTop];
-		returnedValue->data[argumentLocationInBlock] 
-			= rootStack[--rootTop];
+		returnedValue->data[bytePointerInContext] =
+		returnedValue->data[stackTopInBlock] = 
+		returnedValue->data[previousContextInBlock] = NULL;
+		returnedValue->data[bytePointerInBlock] =
+			newInteger(bytePointer);
+		returnedValue->data[argumentLocationInBlock] = newInteger(low);
 		returnedValue->data[stackInBlock] = rootStack[--rootTop];
 		context = rootStack[--rootTop];
 		if (CLASS(context) == BlockClass) {
@@ -413,11 +417,11 @@ execute(struct object *aProcess)
 			method = context->data[methodInContext];
 			bp = bytePtr(method->data[byteCodesInMethod]);
 			stack = context->data[stackInContext];
-			}
-			/* now load new argument array */
+		}
+		/* now load new argument array */
 		while (low > 0) {
 			arguments->data[--low] = stack->data[--stackTop];
-			}
+		}
 		stack->data[stackTop++] = arguments;
 		arguments = 0;
                 break;
@@ -466,8 +470,10 @@ execute(struct object *aProcess)
 		rootStack[rootTop++] = method;
 		rootStack[rootTop++] = context;
 		low = integerValue(method->data[temporarySizeInMethod]);
-		rootStack[rootTop++] = 
-			gcalloc(integerValue(method->data[stackSizeInMethod]));
+		op = rootStack[rootTop++] = 
+		 gcalloc(x = integerValue(method->data[stackSizeInMethod]));
+		op->class = NULL;
+		bzero(bytePtr(op), x * BytesPerWord);
 		if (low > 0) {
 			int i;
 
@@ -479,20 +485,19 @@ execute(struct object *aProcess)
 			rootStack[rootTop++] = temporaries; /* temporaries */
 		} else {
 			rootStack[rootTop++] = NULL;	/* why bother */
-			/* the following silly gyrations are just in case */
-			/* gc occurs while we are building a couple of */
-			/* integers to save the current state */
 		}
 		context = rootStack[rootTop-3];
 		context->data[stackTopInContext] = newInteger(stackTop);
 		context->data[bytePointerInContext] = newInteger(bytePointer);
-			/* now go off and build the new context */
+
+		/* now go off and build the new context */
 		context = gcalloc(contextSize);
 		context->class = ContextClass;
 		temporaries = context->data[temporariesInContext] 
 			= rootStack[--rootTop];
 		stack = context->data[stackInContext] = rootStack[--rootTop];
 		stack->class = ArrayClass;
+		context->data[stackTopInContext] = newInteger(0);
 		stackTop = 0;
 		context->data[previousContextInContext] = rootStack[--rootTop];
 		if (high == 1) {
@@ -509,6 +514,7 @@ execute(struct object *aProcess)
 		arguments = context->data[argumentsInContext] 
 			= rootStack[--rootTop];
 		instanceVariables = literals = 0;
+		context->data[bytePointerInContext] = newInteger(0);
 		bytePointer = 0;
 		bp = (char *) method->data[byteCodesInMethod]->data;
 			/* now go execute new method */
@@ -580,8 +586,9 @@ execute(struct object *aProcess)
 			method = context->data[methodInContext];
 			bp = bytePtr(method->data[byteCodesInMethod]);
 			stack = context->data[stackInContext];
-			}
-			/* now load new argument array */
+		}
+
+		/* now load new argument array */
 		arguments->data[1] = stack->data[--stackTop];
 		arguments->data[0] = stack->data[--stackTop];
 			/* now go send message */
@@ -678,8 +685,9 @@ execute(struct object *aProcess)
 			rootStack[rootTop++] = stack->data[--stackTop];
 			returnedValue = gcalloc(low);
 			returnedValue->class = rootStack[--rootTop];
-			while (low > 0)
+			while (low > 0) {
 				returnedValue->data[--low] = nilObject;
+			}
 			break;
 
 		case 8:	/* block invocation */
@@ -818,6 +826,7 @@ execute(struct object *aProcess)
 			rootStack[rootTop++] = stack->data[--stackTop];
 			returnedValue = gcialloc(low);
 			returnedValue->class = rootStack[--rootTop];
+			bzero(bytePtr(returnedValue), low);
 			break;
 
 		case 21:	/* string at */
@@ -912,6 +921,7 @@ execute(struct object *aProcess)
 				/* pop arguments, try primitive */
 			rootStack[rootTop++] = stack;
 			arguments = gcalloc(low);
+			arguments->class = NULL;
 			stack = rootStack[--rootTop];
 			while (low > 0) {
 				arguments->data[--low] = 

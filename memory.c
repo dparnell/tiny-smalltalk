@@ -224,7 +224,7 @@ gc_move(struct mobject * ptr)
 				 * quick cheat for recovering zero fields
 				 */
 				while (sz && (old_address->data[sz] == 0)) {
-					sz--;
+					new_address->data[sz--] = 0;
 				}
 
 				old_address->size = (sz << 2) | 01;
@@ -248,6 +248,7 @@ gcollect(int sz)
 	int i;
 
 	gccount++;
+
 	/* first change spaces */
 	if (inSpaceOne) {
 		memoryBase = spaceTwo;
@@ -259,7 +260,6 @@ gcollect(int sz)
 		oldBase = spaceTwo;
 	}
 	memoryPointer = memoryTop = memoryBase + spaceSize;
-	bzero((char *) memoryBase, spaceSize * sizeof(struct object));
 	oldTop = oldBase + spaceSize;
 
 	/* then do the collection */
@@ -268,7 +268,7 @@ gcollect(int sz)
 	}
 	for (i = 0; i < staticRootTop; i++) {
 		(* staticRoots[i]) =  gc_move((struct mobject *)
-			* staticRoots[i]);
+			*staticRoots[i]);
 	}
 
 	flushCache();

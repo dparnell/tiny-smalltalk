@@ -115,27 +115,55 @@ static int symbolcomp(struct object * left, struct object * right)
 	return leftsize - rightsize;
 }
 
-static struct object * lookupMethod
-	(struct object * selector, struct object * class)
+static struct object *
+lookupMethod(struct object *selector, struct object *class)
 {
-	struct object *dict, *tree, *node, *symb, *anAssoc;
+	struct object *dict, *keys, *vals, *val;
+	unsigned int low, high, mid;
 
+	/*
+	 * Scan upward through the class hierarchy
+	 */
 	for ( ; class != nilObject; class = class->data[parentClassInClass]) {
+		/*
+		 * Consider the Dictionary of methods for this Class
+		 */
 		dict = class->data[methodsInClass];
-		tree = dict->data[0];
-		node = tree->data[rootInTree];
-		while (node != nilObject) {
-			anAssoc = node->data[valueInNode];
-			symb = anAssoc->data[0];
-			if (symb == selector)
-				return anAssoc->data[1];
-			if (symbolcomp(selector, symb) < 0)
-				node = node->data[leftInNode];
-			else
-				node = node->data[rightInNode];
+		keys = dict->data[0];
+		low = 0; high = keys->size >> 2;
+
+		/*
+		 * Do a binary search through its keys, which are
+		 * Symbol's.
+		 */
+		while (low < high) {
+			mid = (low + high) / 2;
+			val = keys->data[mid];
+
+			/* 
+			 * If we find the selector, return the
+			 * method object.
+			 */
+			if (val == selector) {
+				vals = dict->data[1];
+				return(vals->data[mid]);
+			}
+
+			/*
+			 * Otherwise continue the binary search
+			 */
+			if (symbolcomp(selector, val) < 0) {
+				high = mid;
+			} else {
+				low = mid+1;
 			}
 		}
-	return 0;
+	}
+
+	/*
+	 * Sorry, couldn't find a method
+	 */
+	return(NULL);
 }
 
 /*

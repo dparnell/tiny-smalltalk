@@ -13,6 +13,7 @@ static char inputBuffer[1500], *p, tokenBuffer[80];
 
 static struct object *lookupGlobal(char * name, int ok_missing);
 static int parseStatement(void), parseExpression(void), parseTerm(void);
+static struct object *newOrderedArray(void), *newArray(int size);
 
 static void
 sysError(char * a, char * b)
@@ -342,14 +343,14 @@ newTree(void)
 }
 
 static struct object *
-newMethodDictionary(void)
+newDictionary(void)
 {
 	struct object *result;
 
-	result = gcalloc(1);
-	/* TBD: this isn't really a Dictionary */
+	result = gcalloc(2);
 	result->class = lookupGlobal("Dictionary", 0);
-	result->data[0] = newTree();
+	result->data[0] = newOrderedArray();
+	result->data[1] = newArray(0);
 	return result;
 }
 
@@ -545,7 +546,7 @@ bigBang(void)
 	addGlobalName("Dictionary", DictionaryClass);
 
 		/* finally, we can fill in the fields in class Object */
-	ObjectClass->data[methodsInClass] = newMethodDictionary();
+	ObjectClass->data[methodsInClass] = newDictionary();
 	ObjectClass->data[instanceSizeInClass] = newInteger(0);
 	ClassClass->data[instanceSizeInClass] = newInteger(0);
 
@@ -1366,42 +1367,10 @@ newOrderedArray(void)
 	return(result);
 }
 
-static struct object * 
-treeMethodInsert(struct object * base, struct object * anode)
-{
-	if ((base == 0) || (base == nilObject))
-		return anode;
-	if (symbolCmp(anode->data[valueInNode]->data[nameInMethod],
-			base->data[valueInNode]->data[nameInMethod]) < 0) {
-		base->data[leftInNode] = 
-			treeMethodInsert(base->data[leftInNode], anode);
-	} else {
-		base->data[rightInNode] = 
-			treeMethodInsert(base->data[rightInNode], anode);
-	}
-	return base;
-}
-
-struct object *
-associationInsert(struct object * base, struct object * symNode)
-{
-	if (base == nilObject)
-		return symNode;
-
-	if (symbolCmp(symNode->data[valueInNode]->data[0], 
-		base->data[valueInNode]->data[0])  < 0)
-		base->data[leftInNode] =
-			associationInsert(base->data[leftInNode], symNode);
-	else
-		base->data[rightInNode] =
-			associationInsert(base->data[rightInNode], symNode);
-	return base;
-}
-
 static void
 MethodCommand(void)
 {	
-	struct object *theMethod, *tree;
+	struct object *theMethod;
 
 	/* read class name */
 	readIdentifier();
@@ -1422,13 +1391,12 @@ MethodCommand(void)
 	litTop = 0;
 	argumentTop = 1;
 
+	/*
+	 * If successful compile, insert into the method dictionary
+	 */
 	if (parseMethod(theMethod)) {
-			/* insert into the method tree */
-		tree = currentClass->data[methodsInClass]->data[0];
-		tree->data[0] = associationInsert(tree->data[0],
-			newNode(
-			newAssociation(theMethod->data[nameInMethod], 
-				theMethod), nilObject, nilObject));
+		dictionaryInsert(currentClass->data[methodsInClass],
+			theMethod->data[nameInMethod], theMethod);
 	}
 }
 
@@ -1482,7 +1450,7 @@ ClassCommand(void)
 	nClass->data[instanceSizeInClass] = newInteger(instsize); 
 	nClass->data[variablesInClass] = buildLiteralArray();
 			/* make a tree for new methods */
-	nClass->data[methodsInClass] = newMethodDictionary();
+	nClass->data[methodsInClass] = newDictionary();
 }
 
 /* ------------------------------------------------------------- */

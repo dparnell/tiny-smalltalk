@@ -2139,7 +2139,7 @@ openWrite: nm
 METHOD MetaFile
 openUpdate: nm
 		" open new file for reading and writing "
-	^ self in: (self new) at: 1 put: (self doOpen: nm mode: 'rw+')
+	^ self in: (self new) at: 1 put: (self doOpen: nm mode: 'r+')
 !
 METHOD MetaFile
 fileIn: nm | file |

@@ -480,7 +480,7 @@ int execute (struct object * aProcess)
 
 			case 3:	/* print a single character */
 				low = integerValue(stack->data[--stackTop]);
-				putchar(low); fflush(stdout);
+				putchar(low); /* fflush(stdout); */
 				returnedValue = nilObject;
 				break;
 

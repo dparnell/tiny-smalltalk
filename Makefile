@@ -7,9 +7,11 @@ CC = gcc
 CFLAGS = -g
 
 st: main.o interp.o memory.o
+	rm -f st
 	$(CC) $(CFLAGS) -o st main.o interp.o memory.o
 
 sst: main.o safeinterp.o memory.o
+	rm -f sst
 	$(CC) -o sst main.o safeinterp.o memory.o
 
 distr.tar:

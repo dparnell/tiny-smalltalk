@@ -1495,6 +1495,13 @@ contains: val
 	" Then check if in equivalence class of interval "
 	^ ((val - low) rem: step) = 0
 !
+METHOD Interval
+printString | s |
+	s <- super printString + ' <' +
+		low printString + '..' + high printString.
+	(step ~= 1) ifTrue: [ s <- s + ' by ' + step printString ].
+	^ s + '>'
+!
 COMMENT ---------- Links ------------
 METHOD MetaLink
 value: v

@@ -263,6 +263,7 @@ skipComment  | cc |
 	self nextChar. self skipBlanks
 !
 +1 to: 15 do: [:x| x factorial print. Char newline print]
++(5 to: 1 by: -1) do: [:x| x printNl]
 / end of input
 @EOF
 

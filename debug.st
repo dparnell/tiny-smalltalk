@@ -1,3 +1,35 @@
+"debug.st - a simple interactive debugger for Tiny Smalltalk
+ by Andy Valencia, May 2001
+
+ To use the debugger, fileIn: this file.  Then do:
+
+ Debug run: 'command...'
+
+ The given command line will be compiled (much as it would if you had
+ typed it interactively).  Then the debugger will be started on this
+ command itself.  Generally, you'll do a 's' (or 'step') to step down
+ from the command line into the first method call.
+
+ Command available are:
+ 's' or 'step'		Single step to the next line
+ 'stepi'		Single step one VM instruction
+ 'n' or 'next'		Step over method calls on the current line
+ 'b' or 'break'		Argument is <class>/<method>[/<line #>]
+ 			Set a breakpoint at the named method.
+ 'c' or 'cont'		Continue running until error, completion,
+ 			or breakpoint.
+ 'd' or 'delete'	Argument is an integer; delete that breakpoint
+ 'lb' or 'listbreak'	List breakpoints
+ 'p' or 'print'		Print variable(s).  Arguments are one or more
+ 			temporary, argument, or instance variables.
+			You may also use $pc (VM instruction pointer)
+			and $sp (VM stack top pointer)
+ 'quit'			Leave the debugger (abandon the executing
+ 			target code)
+ 'where' or 'bt'	Show stack backtrace
+ (blank line)		Re-enter previous command.  Useful for single
+ 			stepping statements in a row.
+"
 +Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
 +Method subclass: #DebugMethod variables: #(lines textlines vars bpoints active)
 +Object subclass: #Debug variables: #(proc bpoints)
@@ -487,7 +519,7 @@ run | prev did cmd done line |
 		].
 
 		" List breakpoints "
-		((cmd = 'lb') or: [cmd = 'listbreaks']) ifTrue: [
+		((cmd = 'lb') or: [cmd = 'listbreak']) ifTrue: [
 			self listBreak.
 			did <- true
 		].

@@ -121,7 +121,7 @@ static struct object * gc_move(struct mobject * ptr)
 		if ((old_address >= (struct mobject *) memoryBase)
 			&& (old_address <= (struct mobject *) memoryTop)) {
 			sysError("GC invariant failure -- address in new space",
-					(int)old_address);
+					(unsigned int)old_address);
 			}
 				/* else see if not  in old space */
 			if ((old_address < (struct mobject *) oldBase) ||
@@ -229,12 +229,11 @@ struct object * gcollect(int sz)
 		memoryBase = spaceTwo;
 		inSpaceOne = 0;
 		oldBase = spaceOne;
-		}
-	else {
+	} else {
 		memoryBase = spaceOne;
 		inSpaceOne = 1;
 		oldBase = spaceTwo;
-		}
+	}
 	memoryPointer = memoryTop = memoryBase + spaceSize;
 	bzero((char *) memoryBase, spaceSize * sizeof(struct object));
 	oldTop = oldBase + spaceSize;
@@ -242,11 +241,11 @@ struct object * gcollect(int sz)
 	/* then do the collection */
 	for (i = 0; i < rootTop; i++) {
 		rootStack[i] = gc_move((struct mobject *) rootStack[i]);
-		}
+	}
 	for (i = 0; i < staticRootTop; i++) {
 		(* staticRoots[i]) =  gc_move((struct mobject *)
 			* staticRoots[i]);
-		}
+	}
 
 	flushCache();
 
@@ -254,7 +253,7 @@ struct object * gcollect(int sz)
 	memoryPointer -= sz + 2;
 	if (memoryPointer < memoryBase) {
 		sysError("insufficient memory after garbage collection", sz);
-		}
+	}
 	memoryPointer->size =  sz << 2;
 	return memoryPointer;
 }

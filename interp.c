@@ -736,7 +736,8 @@ execute(struct object *aProcess)
 		case 10: 	/* small integer addition */
 			GET_HIGH_LOW();
 			x = high + low;
-			if (x < high) {
+			if (((high > 0) && (low > 0) && (x < high)) ||
+			 ((high < 0) && (low < 0) && (x > high))) {
 				/* overflow... do it with 64 bits */
 				returnedValue = newLInteger(
 					(long long)high + (long long)low);
@@ -784,22 +785,18 @@ execute(struct object *aProcess)
 		case 15:	/* small integer multiplication */ 
 			GET_HIGH_LOW();
 			x = high*low;
-			if (x < high) {
+			if ((low == 0) || (x/low == high)) {
+				returnedValue = newInteger(x);
+			} else {
 				/* overflow... do it with 64 bits */
 				returnedValue = newLInteger(
 					(long long)high * (long long)low);
-			} else {
-				returnedValue = newInteger(x);
 			}
 			break;
 
 		case 16:	/* small integer subtraction */ 
 			GET_HIGH_LOW();
-			if (low < high) {
-				high -= low;
-			} else {
-				high = 0;
-			}
+			high -= low;
 			returnedValue = newInteger(high);
 			break;
 

@@ -1055,6 +1055,15 @@ do: aBlock
 	1 to: self size do: [:i | aBlock value: (self at: i)]
 !
 METHOD Array
+reverseDo: aBlock
+	| i |
+	i <- self size.
+	[ i >= 1 ] whileTrue: [
+		aBlock value: (self at: i).
+		i <- i - 1
+	]
+!
+METHOD Array
 < arg		| selfsize argsize |
 	selfsize <- self size. argsize <- arg size.
 	1 to: (selfsize min: argsize)

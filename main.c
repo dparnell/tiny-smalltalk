@@ -102,6 +102,7 @@ main(int argc, char ** argv)
 	FILE *fp;
 	char imageFileName[120], *p;
 
+	notify_handler(NULL);
 	strcpy(imageFileName, DefaultImageFile);
 	staticSize = DefaultStaticSize;
 	dynamicSize = DefaultDynamicSize;

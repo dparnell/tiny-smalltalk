@@ -610,22 +610,17 @@ map(struct object **oop, struct object *a1, struct object *a2, int size)
 }
 
 /*
- * exchangeObjects()
- *	Bulk exchange of object identities
- *
- * For each index to array1/array2, all references in current object
- * memory are modified so that references to the object in array1[]
- * become references to the corresponding object in array2[].  References
- * to the object in array2[] similarly become references to the
- * object in array1[].
+ * walk()
+ *	Traverse an object space
  */
-void
-exchangeObjects(struct object *array1, struct object *array2, uint size)
+static void
+walk(struct object *base, struct object *top,
+	struct object *array1, struct object *array2, uint size)
 {
 	struct object *op, *opnext;
 	uint x, sz;
 
-	for (op = memoryPointer; op < memoryTop; op = opnext) {
+	for (op = base; op < top; op = opnext) {
 		/*
 		 * Re-map the class pointer, in case that's the
 		 * object which has been remapped.
@@ -670,5 +665,37 @@ exchangeObjects(struct object *array1, struct object *array2, uint size)
 		 * Walk past this object
 		 */
 		opnext = WORDSUP(op, sz + 2);
+	}
+}
+
+/*
+ * exchangeObjects()
+ *	Bulk exchange of object identities
+ *
+ * For each index to array1/array2, all references in current object
+ * memory are modified so that references to the object in array1[]
+ * become references to the corresponding object in array2[].  References
+ * to the object in array2[] similarly become references to the
+ * object in array1[].
+ */
+void
+exchangeObjects(struct object *array1, struct object *array2, uint size)
+{
+	uint x;
+
+	/*
+	 * Convert our memory spaces
+	 */
+	walk(memoryPointer, memoryTop, array1, array2, size);
+	walk(staticPointer, staticTop, array1, array2, size);
+
+	/*
+	 * Fix up the root pointers, too
+	 */
+	for (x = 0; x < rootTop; x++) {
+		map(&rootStack[x], array1, array2, size);
+	}
+	for (x = 0; x < staticRootTop; x++) {
+		map(staticRoots[x], array1, array2, size);
 	}
 }

@@ -784,7 +784,7 @@ printString | count res |
 		(count = 0) ifFalse: [ res <- res + ' ' ].
 		res <- res + elem printString.
 		count <- count + 1.
-		(count >= 20) ifTrue: [ ^ res + ')' ]
+		(count >= 20) ifTrue: [ ^ res + ' ...)' ]
 	].
 	^ res + ')'
 !
@@ -1265,6 +1265,18 @@ removeKey: key ifAbsent: exceptionBlock | position |
 		ifTrue: [ keys <- keys removeIndex: position.
 			values <- values removeIndex: position]
 		ifFalse: [ ^ exceptionBlock value ]
+!
+METHOD Dictionary
+printString | count res |
+	res <- self class printString + ' ('.
+	count <- 0.
+	self binaryDo: [:k :elem| 
+		(count = 0) ifFalse: [ res <- res + ', ' ].
+		res <- res + (k printString + ' -> ' + elem printString).
+		count <- count + 1.
+		(count >= 20) ifTrue: [ ^ res + ', ...)' ]
+	].
+	^ res + ')'
 !
 COMMENT ---------- Number ------------
 METHOD MetaNumber

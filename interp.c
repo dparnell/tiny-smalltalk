@@ -746,7 +746,11 @@ checkCache:
 
 	    case 4:	/* object size */
 		    returnedValue = stack->data[--stackTop];
-		    high = SIZE(returnedValue);
+		    if (IS_SMALLINT(returnedValue)) {
+			    high  = 0;
+		    } else {
+			    high = SIZE(returnedValue);
+		    }
 		    returnedValue = newInteger(high);
 		    break;
 

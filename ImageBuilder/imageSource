@@ -969,6 +969,13 @@ printString
 	^ self
 !
 METHOD String
+printWidth: width | ret |
+	(self size >= width) ifTrue: [ ^ self ].
+	ret <- self.
+	(self size + 1) to: width do: [ ret <- ret + ' ' ].
+	^ret
+!
+METHOD String
 asSymbol
 	^ Symbol new: self
 !

@@ -5,7 +5,7 @@
 
 CC=gcc
 CFLAGS=-O -g -Wall
-# CFLAGS=-O -g -Wall -DDEBUG -DTRACE
+# CFLAGS=-g -Wall -DDEBUG -DTRACE
 # CFLAGS=-O -g -Wall -DPROFILE
 
 # -lusr for profiling support in VSTa

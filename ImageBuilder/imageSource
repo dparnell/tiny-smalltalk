@@ -397,6 +397,10 @@ doExecute: ticks
 	<6 self ticks>
 !
 METHOD Process
+context: aContext
+	context <- aContext
+!
+METHOD Process
 execute: aContext	| r |
 	context <- aContext.
 	r <- self doExecute: 0.
@@ -408,13 +412,17 @@ execute: aContext	| r |
 !
 COMMENT -----------Context--------------
 METHOD Context
-perform: aMethod withArguments: a
+setup: aMethod withArguments: a
 	method <- aMethod.
 	arguments <- Array new: 1.
 	bytePointer <- 0.
 	stack <- Array new: method stackSize.
 	stackTop <- 0.
 	temporaries <- Array new: method temporarySize.
+!
+METHOD Context
+perform: aMethod withArguments: a
+	self setup: aMethod withArguments: a.
 	^ Process new execute: self
 !
 METHOD Context

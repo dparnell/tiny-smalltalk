@@ -968,6 +968,34 @@ checkCache:
 		    exchangeObjects(op, returnedValue, SIZE(op));
 		    break;
 
+	    case 36:	/* bitOr: */
+	    	op = stack->data[--stackTop];
+		if (!IS_SMALLINT(op)) {
+			--stackTop;
+			goto failPrimitive;
+		}
+		high = integerValue(op);
+		op = stack->data[--stackTop];
+		if (!IS_SMALLINT(op)) {
+			goto failPrimitive;
+		}
+		returnedValue = newInteger(integerValue(op) | high);
+		break;
+
+	    case 37:	/* bitAnd: */
+	    	op = stack->data[--stackTop];
+		if (!IS_SMALLINT(op)) {
+			--stackTop;
+			goto failPrimitive;
+		}
+		high = integerValue(op);
+		op = stack->data[--stackTop];
+		if (!IS_SMALLINT(op)) {
+			goto failPrimitive;
+		}
+		returnedValue = newInteger(integerValue(op) & high);
+		break;
+
 	    default:
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;

@@ -1589,6 +1589,14 @@ METHOD Number
 overflow
 	self error: 'Numeric overflow'
 !
+METHOD Number
+bitAnd: arg
+	^ (self asSmallInt bitAnd: arg)
+!
+METHOD Number
+bitOr: arg
+	^ (self asSmallInt bitOr: arg)
+!
 COMMENT ---------- SmallInt ------------
 METHOD SmallInt
 asSmallInt
@@ -1645,6 +1653,16 @@ METHOD SmallInt
 METHOD SmallInt
 hash
 	^ self
+!
+METHOD SmallInt
+bitOr: arg
+	<36 self arg>.
+	(self bitOr: arg asSmallInt)
+!
+METHOD SmallInt
+bitAnd: arg
+	<37 self arg>.
+	(self bitAnd: arg asSmallInt)
 !
 COMMENT ---------- Integer ------------
 METHOD MetaInteger

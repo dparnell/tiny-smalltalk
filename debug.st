@@ -1,22 +1,22 @@
-+Encoder subclass: #DebugEncoder variables: #(lines parser oldLine oldRange)
++Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
 +Method subclass: #DebugMethod variables: #(lines textlines)
 +Object subclass: #Debug variables: #(proc)
 !DebugEncoder
-parser: p
+name: n
 	lines <- Dictionary new.
-	parser <- p.
-	oldLine <- 0
+	oldLine <- 0.
+	^ super name: n
 !
 !DebugEncoder
 genCode: byte
-	oldRange isNil
-		ifTrue: [
-			oldRange <- ((index + 1) to: (index + 1)).
+	oldRange isNil ifTrue: [
+		oldRange <- lines at: oldLine ifAbsent: [nil].
+		oldRange isNil ifTrue: [
+			oldRange <- Set new.
 			lines at: oldLine put: oldRange
 		]
-		ifFalse: [
-			oldRange high: index + 1.
-		].
+	].
+	oldRange add: (index + 1).
 	^ super genCode: byte
 !
 !DebugEncoder
@@ -133,7 +133,7 @@ showLine | line meth |
 		]
 		ifFalse: [
 			" Show the text "
-			(meth textlines at: line) printNl
+			(meth textlines at: line ifAbsent: ['']) printNl
 		]
 !
 =Debug
@@ -284,22 +284,10 @@ srcLine: bp | bpx |
 	" Array index version of bp... thanks, Smalltalk "
 	bpx <- bp + 1.
 	lines binaryDo: [:src :range |
-		(range contains: bpx) ifTrue: [
+		(range includes: bpx) ifTrue: [
 			^ src
 		]
 	].
 	'No match for ' print. bp printString printNl.
 	^nil
-!
-!Debug
-test | sum cnt |
-	sum <- 0.
-	cnt <- 1.
-	[cnt < 3] whileTrue: [
-		sum <- sum + cnt.
-		cnt <- cnt + 1
-	].
-	sum <- sum + 20.
-	sum printNl.
-	^sum
 !

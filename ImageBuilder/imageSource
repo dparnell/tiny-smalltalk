@@ -600,6 +600,10 @@ METHOD Method
 temporarySize
 	^temporarySize
 !
+METHOD Method
+args: argNames inst: instNames temp: tempNames
+	" Hook for recording symbolic debug "
+!
 COMMENT -----------Chars--------------
 METHOD MetaChar
 new: value
@@ -1823,7 +1827,7 @@ text: aString instanceVars: anArray
 	maxTemps <- 0
 !
 METHOD Parser
-parse: c with: encoderClass	| encoder |
+parse: c with: encoderClass	| encoder meth |
 	" note -- must call text:instanceVars: first "
 	errBlock <- [ ^ nil ].
 	self nextLex.
@@ -1831,7 +1835,9 @@ parse: c with: encoderClass	| encoder |
 	encoder name: self readMethodName.
 	self readMethodVariables.
 	self readBody compile: encoder block: false.
-	^ encoder method: maxTemps class: c text: text
+	meth <- encoder method: maxTemps class: c text: text.
+	meth args: argNames inst: instNames temp: tempNames.
+	^ meth
 !
 METHOD Parser
 parse: c

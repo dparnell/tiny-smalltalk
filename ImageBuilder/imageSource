@@ -1282,6 +1282,33 @@ hash | sz |
 	].
 	^ (self at: 1) value + (self at: sz) value
 !
+METHOD String
+lowerCase | ret c |
+	ret <- String new: (self size).
+	1 to: self size do: [:x|
+		c <- self at: x.
+		c isUpperCase ifTrue: [c <- c lowerCase].
+		ret at: x put: c
+	].
+	^ ret
+!
+METHOD String
+indexOf: val | c s |
+	" For non-strings, search scalar Array elements "
+	(val isKindOf: String) ifFalse: [ ^ super indexOf: val ].
+
+	" Otherwise look for substring match "
+	c <- val at: 1.
+	s <- val size.
+	1 to: (self size - s + 1) do: [:idx|
+		" Cheap check for initial char equality "
+		((self at: idx) = c) ifTrue: [
+			((self from: idx to: (idx + s - 1)) = val)
+				ifTrue: [ ^ idx ]
+		]
+	].
+	^ nil
+!
 COMMENT --------- List -----------
 METHOD MetaList
 with: firstElement	| newList |

@@ -72,9 +72,10 @@ setDebug: sel | meth cl dict |
 runIt: count | ret |
 	" Execute for one instruction.  Return whether or not the return
 	 was 'normal' (i.e., VM stopped due to debugger control, not
-	 something else "
+	 something else.  Spit out a message for a breakpoint. "
 	ret <- proc doExecute: count+1.
-	((ret = 5) or: [ret = 6]) ifTrue: [ ^ true ].
+	(ret = 5) ifTrue: [ ^ true ].
+	(ret = 6) ifTrue: [ self onBreak. ^ true ].
 	(ret = 2) ifTrue: [ 'Error trap' printNl ].
 	(ret = 3) ifTrue: [ 'Message not understood' printNl ].
 	(ret = 4) ifTrue: [ 'Method returned' printNl ].
@@ -162,14 +163,14 @@ atCall | ret meth ctx pc low high |
 	ctx <- proc context.
 	meth <- ctx method.
 	pc <- ctx bytePointer.
-	high <- meth byteCodes at: (pc + 1).
+	high <- meth byteCodes at: (pc + 1) ifAbsent: [ ^ nil ].
 	pc <- pc + 1.
 	low <- high rem: 16.
 	high <- high quo: 16.
 	(high = 0) ifTrue: [
 		high <- low.
-		low <- meth byteCodes at: (pc + 1).
-		pc <- pc + 1.
+		low <- meth byteCodes at: (pc + 1) ifAbsent: [ ^ nil ].
+		pc <- pc + 1
 	].
 
 	" Return nil if it isn't a SendMessage "
@@ -183,6 +184,7 @@ atCall | ret meth ctx pc low high |
 !
 !Debug
 stepCall: sel | ctx stack sp args target meth |
+	" Set up to step into a new method "
 	ctx <- proc context.
 	stack <- ctx stack.
 	sp <- ctx stackTop.
@@ -202,11 +204,12 @@ stepCall: sel | ctx stack sp args target meth |
 !Debug
 onBreak | ctx meth rec |
 	ctx <- proc context.
+	ctx isNil ifTrue: [ ^ false ].
 	meth <- ctx method.
 	1 to: bpoints size do: [:idx|
 		rec <- bpoints at: idx.
 		((rec at: 1) = meth) ifTrue: [
-			'Breakpoint ' print. idx print. ' hit in ' printNl.
+			'Breakpoint ' print. idx print. ' hit in ' print.
 			meth name printString print. ':' print.
 			(rec at: 2) printNl.
 			^ true
@@ -223,33 +226,36 @@ overCall: pc | ctx old res meth |
 
 	" Now let it run until it hits the breakpoint, and clear
 	  the breakpoint. "
+	self breakActive: true. meth breakActive: true.
 	res <- self runIt: -1.
-	meth clearBreak: pc.
+	self breakActive: false.  meth clearBreak: pc.
 	res ifTrue: [
-		" We shouldn't time out... "
+		" Should be stopped at the expected location "
+		((proc context = ctx) and:
+				[ ctx bytePointer = pc ]) ifTrue: [
+			^ false
+		].
+
+		" Or hit some other breakpoint "
+		(self onBreak) ifTrue: [
+			^ false
+		].
+
+		" Otherwise, what's going on? "
 		'Unexpected run completion' printNl.
 		^ true
 	].
 
-	" Should be stopped at the expected location "
-	((proc context = ctx) and:
-			[ ctx bytePointer = pc ]) ifTrue: [
-		^ false
-	].
-
-	" Perhaps a breakpoint? "
-	self onBreak ifTrue: [
-		^ false
-	].
-
-	" If not, we're done "
+	" Some other error killed us "
 	'Execution aborted' printNl.
 	^ true
 !
 !Debug
-doStep: intoCalls | srcl ret |
+doStep: intoCalls | srcl ret ctx |
+	ctx <- proc context.
 	srcl <- self srcLine.
-	[srcl = self srcLine] whileTrue: [
+	[(proc context = ctx) and:
+			[srcl = self srcLine]] whileTrue: [
 		" If dropping into a new method, deal with it "
 		ret <- self atCall.
 		ret notNil ifTrue: [
@@ -312,6 +318,10 @@ setBreak: args | s cl clname meth methname i rec lineNum |
 	args do: [:arg|
 		" Parse <class>:<method> "
 		s <- arg break: ':'.
+		(s size < 2) ifTrue: [
+			'Format is <class>:<method>' printNl
+		] ifFalse: [
+
 		clname <- (s at: 1) asSymbol.
 		methname <- (s at: 2) asSymbol.
 
@@ -337,6 +347,7 @@ setBreak: args | s cl clname meth methname i rec lineNum |
 			" Set & record the breakpoint "
 			meth setBreak: 0.
 			bpoints <- bpoints with: rec
+		]
 		]
 	]
 !
@@ -459,10 +470,21 @@ run | prev did cmd done line |
 
 		" Just let it run "
 		((cmd = 'cont') or: [cmd = 'c']) ifTrue: [
-			self breakActive: true.
-			proc execute.
-			self breakActive: false.
-			^ nil
+			" Step forward once, even over a breakpoint "
+			done <- (self runIt: 1) not.
+
+			" Now run until completion or next break "
+			done ifFalse: [
+				" Activate, run, and deactivate "
+				self breakActive: true.
+				done <- (self runIt: -1) not.
+				self breakActive: false.
+
+				" Display a message if hit a breakpoint "
+				done ifFalse: [ self onBreak ].
+			].
+
+			did <- true
 		].
 
 		" Abandon the method "
@@ -540,22 +562,22 @@ srcLine: bp
 print: var in: ctx | idx obj |
 	" Name of an argument "
 	idx <- (vars at: 1) indexOfVal: var.
-	idx notNil ifTrue: [ (ctx arguments at: idx) printNl. ^ nil ].
+	idx notNil ifTrue: [ (ctx arguments at: idx) print. ^ nil ].
 
 	" Instance variable "
 	idx <- (vars at: 2) indexOfVal: var.
 	idx notNil ifTrue: [
 		obj <- ctx arguments at: 1.
-		(Object class in: obj at: idx) printNl.
+		(Object class in: obj at: idx) print.
 		^ nil
 	].
 
 	" Temporary "
 	idx <- (vars at: 3) indexOfVal: var.
-	idx notNil ifTrue: [ (ctx temporaries at: idx) printNl. ^ nil ].
+	idx notNil ifTrue: [ (ctx temporaries at: idx) print. ^ nil ].
 
 	" Couldn't find it... "
-	'Unknown variable' printNl
+	'Unknown variable' print
 !
 !DebugMethod
 setBreak: bp | old |

@@ -249,10 +249,14 @@ symbolBareCmp(char * left, int leftsize, char * right, int rightsize)
 
 	if (rightsize < minsize) minsize = rightsize;
 	for (i = 0; i < minsize; i++) {
-		if (left[i] != right[i])
-			if (left[i] < right[i]) return -1;
-			else return 1;
+		if (left[i] != right[i]) {
+			if (left[i] < right[i]) {
+			    return -1;
+			} else {
+			    return 1;
+			}
 		}
+	}
 	return leftsize - rightsize;
 }
 

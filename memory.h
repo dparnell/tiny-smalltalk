@@ -66,8 +66,7 @@ struct byteObject {
 
 */
 
-extern struct object * memoryPointer;
-extern struct object * memoryBase;
+extern struct object *memoryPointer, *memoryBase;
 
 /*
 	roots for the memory space
@@ -77,7 +76,7 @@ extern struct object * memoryBase;
 	dynamic values
 */
 # define ROOTSTACKLIMIT 50
-extern struct object * rootStack[];
+extern struct object *rootStack[];
 extern int rootTop;
 extern void addStaticRoot(struct object **);
 
@@ -104,6 +103,7 @@ extern int isDynamicMemory(struct object *);
 	(struct object *)(((uint *)memoryPointer) - ((sz) + 2))) < \
 	memoryBase) ?  gcollect(sz) : \
 	(memoryPointer->size = (sz) << 2, memoryPointer))
+
 #ifndef gcalloc
 extern struct object *gcalloc(int);
 #endif

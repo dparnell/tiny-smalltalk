@@ -1527,7 +1527,7 @@ high
 	^ high
 !
 METHOD Interval
-contains: val
+includes: val
 	" Check within range first "
 	((val < low) or: [val > high]) ifTrue: [ ^ false ].
 	" Then check if in equivalence class of interval "
@@ -1823,7 +1823,6 @@ parse: c with: encoderClass	| encoder |
 	self nextLex.
 	encoder <- encoderClass new.
 	encoder name: self readMethodName.
-	encoder parser: self.
 	self readMethodVariables.
 	self readBody compile: encoder block: false.
 	^ encoder method: maxTemps class: c text: text
@@ -2494,10 +2493,6 @@ name: n
 	literals <- Array new: 0.
 	stackSize <- 0.
 	maxStack <- 1.
-!
-METHOD Encoder
-parser: p
-	" Don't care, except in DebugEncoder subclass "
 !
 METHOD Encoder
 lineNum: l

@@ -748,8 +748,7 @@ at: index
 METHOD Array
 at: index ifAbsent: exceptionBlock
 	<24 self index>
-	(self includesKey: index) ifFalse: [ exceptionBlock value ].
-	self primitiveFailed
+	exceptionBlock value
 !
 METHOD Array
 includes: aValue
@@ -876,23 +875,20 @@ basicAt: index
 !
 METHOD ByteArray
 at: index
-	^self at: index ifAbsent: [self badIndex]
+	<21 self index>
+	(self includesKey: index) ifFalse: [ self badIndex ].
+	self primitiveFailed
 !
 METHOD ByteArray
-at: index ifAbsent: exceptionBlock | b |
-	b <- self basicAt: index.
-	(b isNil) ifTrue: [ ^ exceptionBlock value ].
-	^b
-!
-METHOD ByteArray
-basicAt: index put: value
-	<22 value self index>
-	^nil
+at: index ifAbsent: exceptionBlock
+	<21 self index>
+	exceptionBlock value
 !
 METHOD ByteArray
 at: index put: aValue
-	(self basicAt: index put: aValue) isNil
-		ifTrue: [self badIndex ]
+	<22 aValue self index>
+	(self includesKey: index) ifFalse: [ self badIndex ].
+	self primitiveFailed
 !
 COMMENT ---------- Strings ------------
 METHOD MetaString

@@ -157,6 +157,10 @@ METHOD Object
 debug
 	<18>
 !
+METHOD Object
+primitiveFAiled
+	self error: 'Primitive failed'
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v
@@ -1135,21 +1139,15 @@ factorial
 !
 METHOD SmallInt
 quo: arg
+	<11 self arg>
 	(0 = arg) ifTrue: [^ self error: 'division by zero'].
-	^ arg quoWithSmallInt: self
-!
-METHOD SmallInt
-quoWithSmallInt: arg
-	<11 arg self>
+	self primitiveFailed
 !
 METHOD SmallInt
 rem: arg
+	<12 self arg>
 	(0 = arg) ifTrue: [^ self error: 'division by zero'].
-	^ arg remWithSmallInt: self
-!
-METHOD SmallInt
-remWithSmallInt: arg
-	<12 arg self>
+	self primitiveFailed
 !
 METHOD SmallInt
 + arg

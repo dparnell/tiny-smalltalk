@@ -16,6 +16,7 @@ on: obj
 "
 !Browser
 showPos | cnt |
+	' == stack -> ' print.
 	cnt <- 0.
 	stack do: [:obj|
 		(cnt > 0) ifTrue: [ ' / ' print ].
@@ -79,6 +80,14 @@ on: top | cmd done last obj args idx |
 		" Pop up a stack level "
 		((cmd = 'u') or: [cmd = 'up']) ifTrue: [
 			stack <- stack from: 1 to: (stack size - 1).
+			done <- true
+		].
+
+		" Raw index "
+		(cmd = 'ri') ifTrue: [
+			idx <- (args at: 1) asNumber.
+			last <- Object in: obj at: idx.
+			last printNl.
 			done <- true
 		].
 

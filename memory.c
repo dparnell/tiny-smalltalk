@@ -17,26 +17,20 @@ extern int debugging;	/* true if we are debugging */
 /*
 	static memory space -- never recovered
 */
-static struct object * staticBase;
-static struct object * staticTop;
-static struct object * staticPointer;
+static struct object *staticBase, *staticTop, *staticPointer;
 
 /*
 	dynamic (managed) memory space
 	recovered using garbage collection
 */
 
-static struct object * spaceOne;
-static struct object * spaceTwo;
+static struct object *spaceOne, *spaceTwo;
 static int spaceSize;
 
-struct object * memoryBase;
-struct object * memoryPointer;
-struct object * memoryTop;
+struct object *memoryBase, *memoryPointer, *memoryTop;
 
 static int inSpaceOne;
-static struct object * oldBase;
-static struct object * oldTop;
+static struct object *oldBase, *oldTop;
 
 /*
 	roots for memory access
@@ -53,18 +47,21 @@ static int staticRootTop = 0;
 	area or not
 */
 
-int isDynamicMemory(struct object * x)
+int
+isDynamicMemory(struct object * x)
 {
-	if (inSpaceOne)
+	if (inSpaceOne) {
 		return ((x >= spaceOne) && (x <= (spaceOne + spaceSize)));
-	else
+	} else {
 		return ((x >= spaceTwo) && (x <= (spaceTwo + spaceSize)));
+	}
 }
 
 /*
 	gcinit -- initialize the memory management system
 */
-void gcinit(int staticsz, int dynamicsz)
+void
+gcinit(int staticsz, int dynamicsz)
 {
 		/* allocate the memory areas */
 	staticBase = (struct object *)
@@ -102,7 +99,8 @@ struct mobject {
 	struct mobject * data [0];
 };
 
-static struct object * gc_move(struct mobject * ptr)
+static struct object *
+gc_move(struct mobject * ptr)
 {
 	struct mobject *old_address = ptr, *previous_object = 0,
 		*new_address = 0, *replacement  = 0;
@@ -219,7 +217,8 @@ static struct object * gc_move(struct mobject * ptr)
 	gcollect -- garbage collection entry point
 */
 extern int gccount;
-struct object * gcollect(int sz)
+struct object *
+gcollect(int sz)
 {
 	int i;
 
@@ -263,7 +262,8 @@ struct object * gcollect(int sz)
 	that will not be subject to garbage collection
 */
 
-struct object * staticAllocate(int sz)
+struct object *
+staticAllocate(int sz)
 {
 	staticPointer -= sz + 2;
 	if (staticPointer < staticBase)
@@ -272,7 +272,8 @@ struct object * staticAllocate(int sz)
 	return staticPointer;
 }
 
-struct object * staticIAllocate(int sz)
+struct object *
+staticIAllocate(int sz)
 {
 	int trueSize;
 	struct object * result;
@@ -287,19 +288,22 @@ struct object * staticIAllocate(int sz)
 	if definition is not in-lined, here  is what it should be
 */
 # ifndef gcalloc
-struct object * gcalloc(int sz)
-{	struct object * result;
+struct object *
+gcalloc(int sz)
+{
+	struct object * result;
 
 	memoryPointer -= sz + 2;
 	if (memoryPointer < memoryBase) {
 		return gcollect(sz);
-		}
+	}
 	memoryPointer->size =  sz << 2;
 	return memoryPointer;
 }
 # endif
 
-struct object * gcialloc(int sz)
+struct object *
+gcialloc(int sz)
 {
 	int trueSize;
 	struct object * result;
@@ -315,11 +319,13 @@ struct object * gcialloc(int sz)
 */
 
 static int indirtop = 0;
-struct object * * indirArray;
+static struct object **indirArray;
 
-unsigned int readWord(FILE * fp)
+static unsigned int
+readWord(FILE * fp)
 {
 	int i;
+
 	i = fgetc(fp);
 	if (i == EOF)
 		sysError("unexpected end of file reading image file", 0);
@@ -387,23 +393,24 @@ objectRead(FILE * fp)
 }
 
 
-int fileIn(FILE * fp)
-{	int i;
+int
+fileIn(FILE * fp)
+{
+	int i;
 
-		/* use the currently unused space for the indir pointers */
+	/* use the currently unused space for the indir pointers */
 	if (inSpaceOne) {
 		indirArray = (struct object * *) spaceTwo;
-		}
-	else {
+	} else {
 		indirArray = (struct object * *) spaceOne;
-		}
+	}
 	indirtop = 0;
 
 	/* read in the method from the image file */
 	nilObject = objectRead(fp);
 	for (i = 0; i < 10; i++) {
 		smallInts[i] = objectRead(fp);
-		}
+	}
 	trueObject = objectRead(fp);
 	falseObject = objectRead(fp);
 	globalsObject = objectRead(fp);
@@ -414,47 +421,50 @@ int fileIn(FILE * fp)
 	initialMethod = objectRead(fp);
 	for (i = 0; i < 3; i++) {
 		binaryMessages[i] = objectRead(fp);
-		}
+	}
 
 	/* clean up after ourselves */
 	bzero((char *) indirArray, spaceSize * sizeof(struct object));
 	return indirtop;
 }
 
-static void writeWord(FILE * fp, int i)
+static void
+writeWord(FILE * fp, int i)
 {
-	if (i < 0)
+	if (i < 0) {
 		sysError("trying to write out negative value", i);
+	}
 	if (i >= 255) {
 		fputc(255, fp);
 		writeWord(fp, i - 255);
-		}
-	else
+	} else {
 		fputc(i, fp);
+	}
 }
 
-static void objectWrite(FILE * fp, struct object * obj)
-{	int i;
-	int size;
-
+static void
+objectWrite(FILE * fp, struct object * obj)
+{
+	int i, size;
 
 	if (obj == 0) {
 		sysError("writing out a null object", (int)obj);
-		}
+	}
 
-			/* see if already written */
-	for (i = 0; i < indirtop; i++)
+	/* see if already written */
+	for (i = 0; i < indirtop; i++) {
 		if (obj == indirArray[i]) {
-			if (i == 0)
+			if (i == 0) {
 				writeWord(fp, 5);
-			else {
+			} else {
 				writeWord(fp, 4);
 				writeWord(fp, i);
-				}
-			return;
 			}
+			return;
+		}
+	}
 
-		/* not written, do it now */
+	/* not written, do it now */
 	indirArray[indirtop++] = obj;
 
 	if (obj->class == SmallIntClass) { /* integer */
@@ -462,9 +472,10 @@ static void objectWrite(FILE * fp, struct object * obj)
 		writeWord(fp, integerValue(obj));
 		objectWrite(fp, obj->class);
 		return;
-		}
+	}
 
-	if (obj->size & 02) {	/* byte objects */
+	/* byte objects */
+	if (obj->size & 02) {
 		struct byteObject * bobj = (struct byteObject *) obj;
 		size = obj->size >> 2;
 		writeWord(fp, 3);
@@ -473,34 +484,36 @@ static void objectWrite(FILE * fp, struct object * obj)
 			writeWord(fp, bobj->bytes[i]);
 		objectWrite(fp, obj->class);
 		return;
-		}
+	}
 
-		/* ordinary objects */
+	/* ordinary objects */
 	size = obj->size >> 2;
 	writeWord(fp, 1);
 	writeWord(fp, size);
 	objectWrite(fp, obj->class);
-	for (i = 0; i < size; i++)
+	for (i = 0; i < size; i++) {
 		objectWrite(fp, obj->data[i]);
+	}
 }
 
-int fileOut(FILE * fp)
-{	int i;
+int
+fileOut(FILE * fp)
+{
+	int i;
 
-		/* use the currently unused space for the indir pointers */
+	/* use the currently unused space for the indir pointers */
 	if (inSpaceOne) {
 		indirArray = (struct object * *) spaceTwo;
-		}
-	else {
+	} else {
 		indirArray = (struct object * *) spaceOne;
-		}
+	}
 	indirtop = 0;
 
 	/* write out the roots of the image file */
 	objectWrite(fp, nilObject);
 	for (i = 0; i < 10; i++) {
 		objectWrite(fp, smallInts[i]);
-		}
+	}
 	objectWrite(fp, trueObject);
 	objectWrite(fp, falseObject);
 	objectWrite(fp, globalsObject);
@@ -511,7 +524,7 @@ int fileOut(FILE * fp)
 	objectWrite(fp, initialMethod);
 	for (i = 0; i < 3; i++) {
 		objectWrite(fp, binaryMessages[i]);
-		}
+	}
 	printf("%d objects written in image\n", indirtop);
 
 	/* clean up after ourselves */

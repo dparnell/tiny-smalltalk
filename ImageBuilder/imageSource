@@ -150,6 +150,11 @@ METHOD Object
 primitiveFailed
 	self error: 'Primitive failed'
 !
+METHOD Object
+species
+	" By default, we re-instantiate ourselves as our own Class "
+	^ self class
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v
@@ -918,6 +923,17 @@ METHOD Array
 first
 	^self at: 1
 !
+METHOD Array
+from: low to: high | start stop size obj |
+	start <- low max: 0.
+	stop <- high min: self size.
+	size <- (stop + 1 - start) max: 0.
+	obj <- (self species) new: size.
+	1 to: size do: [ :i |
+		obj at: i put: (self at: start).
+		start <- start + 1 ].
+	^ obj
+!
 COMMENT ---------- OrderedArray ------------
 METHOD MetaOrderedArray
 new
@@ -1015,17 +1031,6 @@ break: separators  | words word |
 		" maybe a last word "
 	(word size > 0) ifTrue: [ words addLast: word ].
 	^ words
-!
-METHOD String
-from: low to: high | start stop size newString |
-	start <- low max: 0.
-	stop <- high min: self size.
-	size <- (stop + 1 - start) max: 0.
-	newString <- String new: size.
-	1 to: size do: [ :i |
-		newString at: i put: (self at: start).
-		start <- start + 1 ].
-	^ newString
 !
 METHOD String
 collect: transformationBlock

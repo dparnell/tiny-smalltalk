@@ -85,13 +85,14 @@ void backTrace(struct object * aContext)
 FILE * tempFile;
 # endif
 
-main(int argc, char ** argv) {
-
-	struct object * aProcess;
-	struct object * aContext;
+int
+main(int argc, char ** argv)
+{
+	struct object *aProcess;
+	struct object *aContext;
 	int size, i;
 	int staticSize, dynamicSize;
-	FILE * fp;
+	FILE *fp;
 	char imageFileName[120];
 
 	strcpy(imageFileName, DefaultImageFile);
@@ -105,11 +106,9 @@ main(int argc, char ** argv) {
 			}
 		else if (strcmp(argv[i], "-s") == 0) {
 			staticSize = atoi(argv[++i]);
-			}
-		else if (strcmp(argv[i], "-d") == 0) {
+		} else if (strcmp(argv[i], "-d") == 0) {
 			dynamicSize = atoi(argv[++i]);
-			}
-		else {
+		} else {
 			strcpy(imageFileName, argv[i]);
 			}
 		}
@@ -135,13 +134,13 @@ main(int argc, char ** argv) {
 	aProcess = staticAllocate(3);
 		/* context should be dynamic */
 	aContext = gcalloc(contextSize);
+	aContext->class = ContextClass;
 
 
 	aProcess->data[contextInProcess] = aContext;
 	size = integerValue(initialMethod->data[stackSizeInMethod]);
-	aContext->data[argumentsInContext] = staticAllocate(2);
 	aContext->data[stackInContext] = staticAllocate(size);
-	aContext->data[argumentsInContext] = staticAllocate(2);
+	aContext->data[argumentsInContext] = nilObject;
 
 	aContext->data[temporariesInContext] = staticAllocate(19);
 	aContext->data[bytePointerInContext] = staticInteger(0);
@@ -181,7 +180,8 @@ main(int argc, char ** argv) {
 FILE * filePointers[FILEMAX];
 int fileTop = 0;
 
-void getUnixString(char * to, int size, struct object * from)
+void
+getUnixString(char * to, int size, struct object * from)
 {
 	int i;
 	int fsize = from->size >> 2;

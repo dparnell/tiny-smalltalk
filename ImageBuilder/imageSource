@@ -244,38 +244,38 @@ listAllMethods
 	self allMethods keysDo: [:n| n printNl ]
 !
 METHOD Class
-viewMethod: name  | meth |
-	meth <- self allMethods at: name
+viewMethod: nm  | meth |
+	meth <- self allMethods at: nm
 		ifAbsent: [ ^ self error: 'no such method'].
 	meth text print.
 	^ ''
 !
 METHOD Class
-editMethod: name	| meth text |
-	meth <- methods at: name
+editMethod: nm	| meth text |
+	meth <- methods at: nm
 		ifAbsent: [ ^ self error: 'no such method'].
 	text <- meth text edit.
 	(self question: 'compile method?')
 		ifTrue: [ ^ self addMethod: text ]
 !
 METHOD Class
-subclass: name
-	^ self subclass: name variables: (Array new: 0)
+subclass: nm
+	^ self subclass: nm variables: (Array new: 0)
 		classVariables: (Array new: 0)
 !
 METHOD Class
-subclass: name variables: v
-	^ self subclass: name variables: v classVariables: (Array new: 0)
+subclass: nm variables: v
+	^ self subclass: nm variables: v classVariables: (Array new: 0)
 !
 METHOD Class
-subclass: name variables: v classVariables: cv | meta |
-	meta <- Class new name: ('Meta' + name asString) asSymbol
+subclass: nm variables: v classVariables: cv | meta |
+	meta <- Class new name: ('Meta' + nm asString) asSymbol
 		parent: self class
 		variables: cv.
-	globals at: name put: ( meta new name: name
+	globals at: nm put: ( meta new name: nm
 		parent: self
 		variables: v ).
-	^ 'subclass created: ' + name printString
+	^ 'subclass created: ' + nm printString
 !
 METHOD Class
 addMethod	| text |
@@ -2123,23 +2123,23 @@ isEmpty
 !
 COMMENT --------------file methods-----------------
 METHOD MetaFile
-doOpen: name mode: mode
-	<100 name mode>
+doOpen: nm mode: mode
+	<100 nm mode>
 !
 METHOD MetaFile
-openRead: name
+openRead: nm
 		" open new file for reading "
-	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'r')
+	^ self in: (self new) at: 1 put: (self doOpen: nm mode: 'r')
 !
 METHOD MetaFile
-openWrite: name
+openWrite: nm
 		" open new file for writing "
-	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'w')
+	^ self in: (self new) at: 1 put: (self doOpen: nm mode: 'w')
 !
 METHOD MetaFile
-openUpdate: name
+openUpdate: nm
 		" open new file for reading and writing "
-	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'rw')
+	^ self in: (self new) at: 1 put: (self doOpen: nm mode: 'rw+')
 !
 METHOD MetaFile
 fileIn: nm | file |

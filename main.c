@@ -38,9 +38,9 @@ int gccount = 0;
 static char *tmpdir = DefaultTmpdir;
 
 void
-sysError(char * a, int b)
+sysError(char * a, unsigned int b)
 {
-	fprintf(stderr,"unrecoverable system error: %s %d\n", a, b);
+	fprintf(stderr,"unrecoverable system error: %s 0x%x\n", a, b);
 	exit(1);
 }
 
@@ -102,7 +102,6 @@ main(int argc, char ** argv)
 	FILE *fp;
 	char imageFileName[120], *p;
 
-	notify_handler(NULL);
 	strcpy(imageFileName, DefaultImageFile);
 	staticSize = DefaultStaticSize;
 	dynamicSize = DefaultDynamicSize;

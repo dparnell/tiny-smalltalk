@@ -7,6 +7,6 @@
 #include <stdio.h>
 
 extern int fileIn(FILE * fp), fileOut(FILE * fp);
-extern void sysError(char *, int), flushCache(void);
+extern void sysError(char *, unsigned int), flushCache(void);
 
 #endif /* GLOBS_H */

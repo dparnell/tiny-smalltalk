@@ -414,5 +414,5 @@ print: var in: ctx | idx obj |
 	idx notNil ifTrue: [ (ctx temporaries at: idx) printNl. ^ nil ].
 
 	" Couldn't find it... "
-	'Unknown variable: ' print. var printNl
+	'Unknown variable' printNl
 !

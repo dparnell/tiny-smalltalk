@@ -47,6 +47,28 @@ ivars: obj | iv |
 	]
 !
 
+" run:
+	Compile and run Smalltalk expression on object
+"
+!Browser
+run: args on: obj | t cl |
+	" Assemble arguments into single String "
+	args do: [:arg|
+		t isNil ifTrue: [ t <- arg ]
+		 ifFalse: [ t <- t + ' ' + arg ]
+	].
+
+	" Compile into xxBrowse Method for object's class "
+	cl <- obj class.
+	t <- 'xxBrowse' + String newline + String tab + '^ ' + t.
+	(cl addMethod: t) notNil ifTrue: [
+		" Compile OK, run and print result "
+		obj xxBrowse printNl.
+		" Now clean up (remove) browse method "
+		cl removeMethod: #xxBrowse
+	]
+!
+
 " on:
 	Main UI loop for browser
 "
@@ -121,6 +143,12 @@ on: top | cmd done last obj args idx |
 		].
 		((cmd = 'sz') or: [cmd = 'size']) ifTrue: [
 			obj size printNl.
+			done <- true
+		].
+
+		" Print arbitrary expression "
+		((cmd = 'p') or: [cmd = 'print']) ifTrue: [
+			self run: args on: obj.
 			done <- true
 		].
 

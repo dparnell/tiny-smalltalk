@@ -155,6 +155,11 @@ species
 	" By default, we re-instantiate ourselves as our own Class "
 	^ self class
 !
+METHOD Object
+hash
+	" Most objects should generate something based on their value "
+	^ self class printString hash
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v
@@ -552,6 +557,10 @@ asString
 	^self printString
 !
 METHOD Symbol
+hash
+	^self printString hash
+!
+METHOD Symbol
 asSymbol
 	^self
 !
@@ -651,6 +660,10 @@ value
 	^ value
 !
 METHOD Char
+hash
+	^ value
+!
+METHOD Char
 isDigit
 	^ self between: $0 and: $9
 !
@@ -713,6 +726,10 @@ METHOD Char
 !
 COMMENT ---------- Collection ------------
 METHOD Collection
+noElement
+	self error: 'Element not present'
+!
+METHOD Collection
 size	| tally |
 	tally <- 0.
 	self do: [:i | tally <- tally + 1].
@@ -727,6 +744,10 @@ METHOD Collection
 at: value ifAbsent: exceptionBlock
 	self do: [ :element | element = value ifTrue: [ ^ element ]].
 	^ exceptionBlock value
+!
+METHOD Collection
+at: value
+	^ self at: value ifAbsent: [ self noElement ]
 !
 METHOD Collection
 includes: value
@@ -980,6 +1001,15 @@ from: low to: high | start stop size obj |
 		start <- start + 1 ].
 	^ obj
 !
+METHOD Array
+hash | sz |
+	sz <- self size.
+	(sz < 2) ifTrue: [
+		(sz = 1) ifTrue: [ ^ (self at: 1) hash + sz ].
+		^ 0
+	].
+	^ (self at: 1) hash + (self at: sz) hash
+!
 COMMENT ---------- OrderedArray ------------
 METHOD MetaOrderedArray
 new
@@ -1160,6 +1190,15 @@ asNumber | val |
 		val <- (val * 10) + (c value - 48)
 	].
 	^val
+!
+METHOD String
+hash | sz |
+	sz <- self size.
+	(sz < 2) ifTrue: [
+		(sz = 1) ifTrue: [ ^ (self at: 1) value ].
+		^ 0
+	].
+	^ (self at: 1) value + (self at: sz) value
 !
 COMMENT --------- List -----------
 METHOD MetaList
@@ -1390,7 +1429,7 @@ remove: elem ifAbsent: aBlock | pos |
 !
 METHOD Set
 remove: elem
-	^ self remove: elem ifAbsent: [self error: 'Element not present']
+	^ self remove: elem ifAbsent: [self noElement ]
 !
 METHOD Set
 do: aBlock
@@ -1522,6 +1561,10 @@ METHOD SmallInt
 	(arg isMemberOf: SmallInt) ifFalse: [^self = arg asSmallInt].
 	self primitiveFailed
 !
+METHOD SmallInt
+hash
+	^ self
+!
 COMMENT ---------- Integer ------------
 METHOD MetaInteger
 new: low
@@ -1536,8 +1579,13 @@ asInteger
 !
 METHOD Integer
 asSmallInt
-	<33 self>
+	<33 self>.
 	self overflow
+!
+METHOD Integer
+hash
+	<33 self>.
+	^ (self rem: 65536) asSmallInt
 !
 METHOD Integer
 quo: arg

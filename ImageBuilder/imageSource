@@ -2205,20 +2205,40 @@ readLine	| value  c nl |
 	^ value
 !
 METHOD File
+fileInDispatch: cmd | c |
+	" Immediate execte "
+	cmd = $+ ifTrue: [
+		self readLine doIt printNl.
+		^ self
+	].
+
+	" Method definition "
+	(cmd = $! or: [ cmd = $=]) ifTrue: [
+		self methodCommand: cmd = $!.
+		^ self
+	].
+
+	" Comment enclosed in quotes... find matching quote "
+	(cmd = $") ifTrue: [
+		[ c <- self readChar. c ~= $" ] whileTrue: [
+			" Consume chars until closing quote "
+			nil
+		].
+		^ self
+	].
+
+	" Blank line, just return to process next line "
+	(cmd = Char newline) ifTrue: [
+		^ self
+	].
+
+	" It is random chars (treat as comment--discard) "
+	self readLine
+!
+METHOD File
 fileIn		| cmd |
 	[ cmd <- self readChar. cmd notNil ] whileTrue: [
-		cmd = $+ ifTrue: [
-			self readLine doIt printNl
-		] ifFalse: [
-			(cmd = $! or: [ cmd = $=]) ifTrue: [
-				self methodCommand: cmd = $!
-			] ifFalse: [
-				"it is a comment"
-				(cmd = Char newline) ifFalse: [
-					self readLine
-				]
-			]
-		]
+		self fileInDispatch: cmd
 	]
 !
 METHOD File

@@ -49,10 +49,10 @@ CLASS MetaByteArray Class         MetaArray
 CLASS ByteArray     MetaByteArray Array
 CLASS MetaString    Class         MetaArray
 CLASS String        MetaString    Array
-CLASS MetaNumeric   Class         MetaObject
-CLASS Numeric       MetaNumeric   Magnitude
+CLASS MetaNumber   Class         MetaObject
+CLASS Number       MetaNumber   Magnitude
 CLASS MetaInteger   Class         MetaObject
-CLASS Integer       MetaInteger   Numeric
+CLASS Integer       MetaInteger   Number
 CLASS MetaSmallInt  Class         MetaInteger
 CLASS SmallInt      MetaSmallInt  Integer
 CLASS MetaLink      Class         MetaObject

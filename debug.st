@@ -1,5 +1,5 @@
 +Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
-+Method subclass: #DebugMethod variables: #(lines textlines)
++Method subclass: #DebugMethod variables: #(lines textlines vars)
 +Object subclass: #Debug variables: #(proc)
 !DebugEncoder
 name: n
@@ -96,6 +96,14 @@ stack
 !Context
 stackTop
 	^ stackTop
+!
+!Context
+temporaries
+	^ temporaries
+!
+!Context
+arguments
+	^ arguments
 !
 !Method
 forClass
@@ -265,6 +273,26 @@ doStep: intoCalls | srcl ret |
 	^ false
 !
 !Debug
+examine: arg | args var ctx meth |
+	" Get the DebugMethod, which has symbolic information for variables "
+	ctx <- proc context.
+	meth <- ctx method.
+	(meth isKindOf: DebugMethod) ifFalse: [
+		'No debug information for ' print.
+		meth name printNl.
+		^ nil
+	].
+
+	" Walk each variable, printing its value "
+	args <- arg break: ' '.
+	2 to: args size do: [:x|
+		var <- args at: x.
+		var print. ': ' print.
+		meth print: var in: ctx.
+		Char newline print
+	]
+!
+!Debug
 run | prev did cmd done |
 	prev <- ''.
 	done <- false.
@@ -295,20 +323,23 @@ run | prev did cmd done |
 		((cmd = 'step') or: [cmd = 's']) ifTrue: [
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
-			 ifFalse: [
-				done <- self doStep: true.
-				did <- true
-			 ]
+			 ifFalse: [ done <- self doStep: true ].
+			did <- true
 		].
 
 		" Step a source line, stepping over message sends "
 		((cmd = 'next') or: [cmd = 'n']) ifTrue: [
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
-			 ifFalse: [
-				done <- self doStep: false.
-				did <- true
-			 ]
+			 ifFalse: [ done <- self doStep: false ].
+			did <- true.
+		].
+
+		" Examine variables "
+		(((cmd from: 1 to: 2) = 'p ') or: [
+				(cmd from: 1 to: 6) = 'print ']) ifTrue: [
+			self examine: cmd.
+			did <- true
 		].
 
 		" Just let it run "
@@ -346,6 +377,13 @@ textlines
 	^ textlines
 !
 !DebugMethod
+args: argNames inst: instNames temp: tempNames
+	vars <- Array new: 3.
+	vars at: 1 put: argNames.
+	vars at: 2 put: instNames.
+	vars at: 3 put: tempNames
+!
+!DebugMethod
 srcLine: bp | bpx |
 	" Array index version of bp... thanks, Smalltalk "
 	bpx <- bp + 1.
@@ -356,4 +394,25 @@ srcLine: bp | bpx |
 	].
 	'No match for ' print. bp printString printNl.
 	^nil
+!
+!DebugMethod
+print: var in: ctx | idx obj |
+	" Name of an argument "
+	idx <- (vars at: 1) indexOfVal: var.
+	idx notNil ifTrue: [ (ctx arguments at: idx) printNl. ^ nil ].
+
+	" Instance variable "
+	idx <- (vars at: 2) indexOfVal: var.
+	idx notNil ifTrue: [
+		obj <- ctx arguments at: 1.
+		(Object class in: obj at: idx) printNl.
+		^ nil
+	].
+
+	" Temporary "
+	idx <- (vars at: 3) indexOfVal: var.
+	idx notNil ifTrue: [ (ctx temporaries at: idx) printNl. ^ nil ].
+
+	" Couldn't find it... "
+	'Unknown variable: ' print. var printNl
 !

@@ -529,6 +529,10 @@ printString
 	<23 self String>
 !
 METHOD Symbol
+asString
+	^self printString
+!
+METHOD Symbol
 = aString
 		" works with either symbol or string arguments "
 	^ self printString = aString printString
@@ -582,6 +586,11 @@ METHOD MetaChar
 newline
 		" return newline character "
 	^ self new: 10
+!
+METHOD MetaChar
+tab
+		" return tab character "
+	^ self new: 9
 !
 METHOD MetaChar
 doInput

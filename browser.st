@@ -67,12 +67,13 @@ run: args on: obj | t cl |
  Returns a boolean for whether or not the scan should end.
 "
 !Browser
-scan: elems count: count | c |
+scan: elems count: count | c s |
 	[ true ] whileTrue: [
-		c <- String input at: 1.
-		(c = $q) ifTrue: [ ^ true ].
-		(c = $ ) ifTrue: [ ^ false ].
-		(c = 10 asChar) ifFalse: [
+		s <- String input.
+		(s size = 0) ifFalse: [
+			c <- s at: 1.
+			(c = $q) ifTrue: [ ^ true ].
+			(c = $ ) ifTrue: [ ^ false ].
 			((c >= $0) and: [c < (48 + count) asChar]) ifTrue: [
 				stack <- stack with:
 					(elems at: (c value - 47)).

@@ -649,6 +649,9 @@ execute(struct object *aProcess)
 			case 11: 	/* small integer division */
 				low = integerValue(stack->data[--stackTop]);
 				high = integerValue(stack->data[--stackTop]);
+				if (low == 0) {
+					goto failPrimitive;
+				}
 				high /= low;
 				returnedValue = newInteger(high);
 				break;
@@ -656,6 +659,9 @@ execute(struct object *aProcess)
 			case 12:	/* small integer remainder */ 
 				low = integerValue(stack->data[--stackTop]);
 				high = integerValue(stack->data[--stackTop]);
+				if (low == 0) {
+					goto failPrimitive;
+				}
 				high %= low;
 				returnedValue = newInteger(high);
 				break;
@@ -663,19 +669,21 @@ execute(struct object *aProcess)
 			case 13:	/* small integer less than */ 
 				low = integerValue(stack->data[--stackTop]);
 				high = integerValue(stack->data[--stackTop]);
-				if (high < low)
+				if (high < low) {
 					returnedValue = trueObject;
-				else
+				} else {
 					returnedValue = falseObject;
+				}
 				break;
 
 			case 14:	/* small integer equality */ 
 				low = integerValue(stack->data[--stackTop]);
 				high = integerValue(stack->data[--stackTop]);
-				if (high == low)
+				if (high == low) {
 					returnedValue = trueObject;
-				else
+				} else {
 					returnedValue = falseObject;
+				}
 				break;
 
 			case 15:	/* small integer multiplication */ 
@@ -764,7 +772,28 @@ execute(struct object *aProcess)
 			 */
 			context = rootStack[--rootTop];
 			goto doReturn;
+
+failPrimitive:
+		/*
+		 * Since we're continuing execution from a failed
+		 * primitive, re-fetch context if a GC had occurred
+		 * during the failed execution.  Supply a return value
+		 * for the failed primitive.
+		 */
+ 		if (context != rootStack[--rootTop]) {
+ 			context = rootStack[rootTop];
+ 			method = context->data[methodInContext];
+ 			stack = context->data[stackInContext];
+ 			bp = bytePtr(method->data[byteCodesInMethod]);
+ 			arguments = temporaries = literals = 
+ 				instanceVariables = 0;
+		}
+ 		stack->data[stackTop++] = nilObject;
+
 endPrimitive:
+		/*
+		 * Done with primitive, continue execution loop
+		 */
 		break;
 
             case DoSpecial:

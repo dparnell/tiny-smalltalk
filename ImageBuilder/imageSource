@@ -164,6 +164,11 @@ hash
 	" Most objects should generate something based on their value "
 	^ self class printString hash
 !
+METHOD Object
+become: other
+	" Exchange identity with another object "
+	(Array with: self) elementsExchangeIdentityWith: (Array with: other)
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v
@@ -1013,6 +1018,11 @@ hash | sz |
 		^ 0
 	].
 	^ (self at: 1) hash + (self at: sz) hash
+!
+METHOD Array
+elementsExchangeIdentityWith: otherArray
+	<35 self otherArray>.
+	self primitiveFailed
 !
 COMMENT ---------- OrderedArray ------------
 METHOD MetaOrderedArray

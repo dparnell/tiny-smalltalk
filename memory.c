@@ -157,8 +157,8 @@ gc_move(struct mobject * ptr)
 
 				isz = SIZE(old_address);
 				sz = (isz + BytesPerWord - 1)/BytesPerWord;
-				memoryPointer = (struct object *)(
-				 ((uint *)memoryPointer) - (sz + 2));
+				memoryPointer = WORDSDOWN(memoryPointer,
+					sz + 2);
 				new_address = (struct mobject *)memoryPointer;
 				SETSIZE(new_address, isz);
 				new_address->size |= FLAG_BIN;
@@ -177,8 +177,8 @@ gc_move(struct mobject * ptr)
 			/* must be non-binary object */
 			} else  {
 				sz = SIZE(old_address);
-				memoryPointer = (struct object *)(
-				 ((uint *)memoryPointer) - (sz + 2));
+				memoryPointer = WORDSDOWN(memoryPointer,
+					sz + 2);
 				new_address = (struct mobject *)memoryPointer;
 				SETSIZE(new_address, sz);
 				old_address->size |= FLAG_GCDONE;
@@ -276,8 +276,7 @@ gcollect(int sz)
 	flushCache();
 
 	/* then see if there is room for allocation */
-	memoryPointer = (struct object *)
-	 (((uint *)memoryPointer) - (sz + 2));
+	memoryPointer = WORDSDOWN(memoryPointer, sz + 2);
 	if (memoryPointer < memoryBase) {
 		sysError("insufficient memory after garbage collection", sz);
 	}
@@ -293,8 +292,7 @@ gcollect(int sz)
 struct object *
 staticAllocate(int sz)
 {
-	staticPointer = (struct object *)
-		(((uint *)staticPointer) - (sz + 2));
+	staticPointer = WORDSDOWN(staticPointer, sz + 2);
 	if (staticPointer < staticBase) {
 		sysError("insufficient static memory", 0);
 	}
@@ -324,8 +322,7 @@ gcalloc(int sz)
 {
 	struct object * result;
 
-	memoryPointer = (struct object *)
-		(((uint *)memoryPointer) - (sz + 2));
+	memoryPointer = WORDSDOWN(memoryPointer, sz + 2);
 	if (memoryPointer < memoryBase) {
 		return gcollect(sz);
 	}
@@ -588,4 +585,90 @@ addStaticRoot(struct object **objp)
 			(unsigned int)objp);
 	}
 	staticRoots[staticRootTop++] = objp;
+}
+
+/*
+ * map()
+ *	Fix an OOP if needed, based on values to be exchanged
+ */
+static void
+map(struct object **oop, struct object *a1, struct object *a2, int size)
+{
+	int x;
+	struct object *oo = *oop;
+
+	for (x = 0; x < size; ++x) {
+		if (a1->data[x] == oo) {
+			*oop = a2->data[x];
+			return;
+		}
+		if (a2->data[x] == oo) {
+			*oop = a1->data[x];
+			return;
+		}
+	}
+}
+
+/*
+ * exchangeObjects()
+ *	Bulk exchange of object identities
+ *
+ * For each index to array1/array2, all references in current object
+ * memory are modified so that references to the object in array1[]
+ * become references to the corresponding object in array2[].  References
+ * to the object in array2[] similarly become references to the
+ * object in array1[].
+ */
+void
+exchangeObjects(struct object *array1, struct object *array2, uint size)
+{
+	struct object *op, *opnext;
+	uint x, sz;
+
+	for (op = memoryPointer; op < memoryTop; op = opnext) {
+		/*
+		 * Re-map the class pointer, in case that's the
+		 * object which has been remapped.
+		 */
+		map(&op->class, array1, array2, size);
+
+		/*
+		 * Skip our argument arrays, since otherwise things
+		 * get rather circular.
+		 */
+		sz = SIZE(op);
+		if ((op == array1) || (op == array2)) {
+			opnext = WORDSUP(op, sz + 2);
+			continue;
+		}
+
+		/*
+		 * Don't have to worry about instance variables
+		 * if it's a binary format.
+		 */
+		if (op->size & FLAG_BIN) {
+			uint trueSize;
+
+			/*
+			 * Skip size/class, and enough words to
+			 * contain the binary bytes.
+			 */
+			trueSize = (sz + BytesPerWord - 1) / BytesPerWord;
+			opnext = WORDSUP(op, trueSize + 2);
+			continue;
+		}
+
+		/*
+		 * For each instance variable slot, fix up the pointer
+		 * if needed.
+		 */
+		for (x = 0; x < sz; ++x) {
+			map(&op->data[x], array1, array2, size);
+		}
+
+		/*
+		 * Walk past this object
+		 */
+		opnext = WORDSUP(op, sz + 2);
+	}
 }

@@ -949,6 +949,21 @@ execute(struct object *aProcess, int ticks)
 	    	    flushCache();
 		    break;
 
+	    case 35:	/* Bulk object exchange */
+	    	    op = stack->data[--stackTop];
+		    if (op->class != ArrayClass) {
+		    	goto failPrimitive;
+		    }
+		    returnedValue = stack->data[--stackTop];
+		    if (returnedValue->class != ArrayClass) {
+		    	goto failPrimitive;
+		    }
+		    if (SIZE(op) != SIZE(returnedValue)) {
+		    	goto failPrimitive;
+		    }
+		    exchangeObjects(op, returnedValue, SIZE(op));
+		    break;
+
 	    default:
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;

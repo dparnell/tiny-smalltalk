@@ -42,6 +42,9 @@ struct byteObject {
 
 # define BytesPerWord 4
 # define bytePtr(x) (((struct byteObject *) x)->bytes)
+#define WORDSUP(ptr, amt) ((struct object *)(((char *)(ptr)) + \
+	((amt) * BytesPerWord)))
+#define WORDSDOWN(ptr, amt) WORDSUP(ptr, 0 - (amt))
 
 /*
  * SmallInt objects are used to represent short integers.  They are
@@ -105,12 +108,12 @@ extern struct object *nilObject, *trueObject,
 extern void gcinit(int, int);
 extern struct object *gcollect(int), *staticAllocate(int),
 	*staticIAllocate(int), *gcialloc(int);
+extern void exchangeObjects(struct object *, struct object *, uint);
 
 extern int isDynamicMemory(struct object *);
 
-#define gcalloc(sz) (((memoryPointer = \
-	(struct object *)(((uint *)memoryPointer) - ((sz) + 2))) < \
-	memoryBase) ?  gcollect(sz) : \
+#define gcalloc(sz) (((memoryPointer = WORDSDOWN(memoryPointer, (sz) + 2)) < \
+	memoryBase) ? gcollect(sz) : \
 	(SETSIZE(memoryPointer, (sz)), memoryPointer))
 
 #ifndef gcalloc

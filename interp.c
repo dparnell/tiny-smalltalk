@@ -29,9 +29,10 @@ extern int cacheMiss;
 
 
 extern struct object * nwInteger(int);
-# define newInteger(x) (((x)<10)?smallInts[x]:nwInteger(x))
+# define newInteger(x) (((uint)(x) < 10) ? \
+	smallInts[x] : nwInteger(x))
 
-extern struct object * primitive(int, struct object *);
+extern struct object *primitive(int, struct object *);
 
 /*
 	The following are roots for the file out 
@@ -112,7 +113,7 @@ static struct object *
 lookupMethod(struct object *selector, struct object *class)
 {
 	struct object *dict, *keys, *vals, *val;
-	unsigned int low, high, mid;
+	uint low, high, mid;
 
 	/*
 	 * Scan upward through the class hierarchy
@@ -261,7 +262,7 @@ do_Integer(int op, struct object *low, struct object *high)
 int
 execute(struct object *aProcess)
 {   
-    int low, high, stackTop, bytePointer, lastPrimitiveNumber;
+    int low, high, x, stackTop, bytePointer, lastPrimitiveNumber;
     struct object *context, *method, *arguments, *temporaries,
 	    *instanceVariables, *literals, *stack,
 	    *returnedValue = nilObject, *messageSelector,
@@ -445,8 +446,8 @@ execute(struct object *aProcess)
 			bytePtr(receiverClass->data[nameInClass]),
 			bytePtr(messageSelector));
 	     checkCache:
-		low = (((unsigned int) messageSelector) +
-			((unsigned int) receiverClass)) % cacheSize;
+		low = (((uint) messageSelector) +
+			((uint) receiverClass)) % cacheSize;
 		if ((cache[low].name == messageSelector) &&
 		    (cache[low].class == receiverClass)) {
 			method = cache[low].method;
@@ -627,272 +628,289 @@ execute(struct object *aProcess)
 		rootStack[rootTop++] = context;
 		lastPrimitiveNumber = high;
 		switch (high) {
-			case 1:		/* object identity */
-				returnedValue = stack->data[--stackTop];
-				if (returnedValue == stack->data[--stackTop]) {
-					returnedValue = trueObject;
-				} else {
-					returnedValue = falseObject;
-				}
-				break;
+		case 1:		/* object identity */
+			returnedValue = stack->data[--stackTop];
+			if (returnedValue == stack->data[--stackTop]) {
+				returnedValue = trueObject;
+			} else {
+				returnedValue = falseObject;
+			}
+			break;
 
-			case 2:		/* object class */
-				returnedValue = stack->data[--stackTop]->class;
-				break;
+		case 2:		/* object class */
+			returnedValue = stack->data[--stackTop]->class;
+			break;
 
-			case 3:	/* print a single character */
-				low = integerValue(stack->data[--stackTop]);
-				putchar(low); /* fflush(stdout); */
+		case 3:	/* print a single character */
+			low = integerValue(stack->data[--stackTop]);
+			putchar(low); /* fflush(stdout); */
+			returnedValue = nilObject;
+			break;
+
+		case 4:	/* object size */
+			returnedValue = stack->data[--stackTop];
+			high = returnedValue->size >> 2;
+			returnedValue = newInteger(high);
+			break;
+
+		case 5:		/* Array at put */
+			op = stack->data[--stackTop];
+			if (op->class != SmallIntClass) {
+				stackTop -= 2;
+				goto failPrimitive;
+			}
+			low = integerValue(op)-1;
+			returnedValue = stack->data[--stackTop];
+			/* Bounds check */
+			if ((low < 0) ||
+			 (low >= (returnedValue->size >> 2))) {
+				stackTop -= 1;
+				goto failPrimitive;
+			}
+			returnedValue->data[low] 
+				= stack->data[--stackTop];
+			/*
+			 * If putting a non-static pointer
+			 * into an array in static memory,
+			 * register it for GC.
+			 */
+			if (!isDynamicMemory(returnedValue) 
+					&& isDynamicMemory(
+					 stack->data[stackTop])) {
+				addStaticRoot(
+				 &returnedValue->data[low]);
+			}
+			break;
+
+		case 6:		/* new process execute */
+			low = execute(stack->data[--stackTop]);
+			/* got to load everything else */
+			returnedValue = newInteger(low);
+			break;
+
+		case 7: 	/* new object allocation */
+			low = integerValue(stack->data[--stackTop]);
+			rootStack[rootTop++] = stack->data[--stackTop];
+			returnedValue = gcalloc(low);
+			returnedValue->class = rootStack[--rootTop];
+			while (low > 0)
+				returnedValue->data[--low] = nilObject;
+			break;
+
+		case 8:	/* block invocation */
+			/* low holds number of arguments */
+			returnedValue = stack->data[--stackTop];
+				/* put arguments in place */
+			high = integerValue(returnedValue->data[
+					argumentLocationInBlock]);
+			temporaries = returnedValue->data[temporariesInBlock];
+			low -= 2;
+			while (low >= 0) {
+				temporaries->data[high + low] =
+					stack->data[--stackTop];
+				low--;
+			}
+			returnedValue->data[previousContextInBlock] =
+				context->data[previousContextInContext];
+			context = returnedValue;
+			arguments = instanceVariables =
+				literals = 0;
+			stack = context->data[stackInContext];
+			stackTop = 0;
+			method = context->data[methodInBlock];
+			bp = bytePtr(method->data[byteCodesInMethod]);
+			bytePointer = integerValue(
+				context->data[bytePointerInBlock]);
+			--rootTop;
+			goto endPrimitive;
+
+		case 9:		/* read char from input */
+			low = getchar();
+			if (low == EOF) {
 				returnedValue = nilObject;
-				break;
-
-			case 4:	/* object size */
-				returnedValue = stack->data[--stackTop];
-				high = returnedValue->size >> 2;
-				returnedValue = newInteger(high);
-				break;
-
-			case 5:		/* Array at put */
-				low = integerValue(stack->data[--stackTop])-1;
-				returnedValue = stack->data[--stackTop];
-				/* Bounds check */
-				if ((low < 0) ||
-				 (low >= (returnedValue->size >> 2))) {
-					stackTop -= 1;
-					goto failPrimitive;
-				}
-				returnedValue->data[low] 
-					= stack->data[--stackTop];
-				/*
-				 * If putting a non-static pointer
-				 * into an array in static memory,
-				 * register it for GC.
-				 */
-				if (!isDynamicMemory(returnedValue) 
-						&& isDynamicMemory(
-						 stack->data[stackTop])) {
-					addStaticRoot(
-					 &returnedValue->data[low]);
-				}
-				break;
-
-			case 6:		/* new process execute */
-				low = execute(stack->data[--stackTop]);
-				/* got to load everything else */
+			} else {
 				returnedValue = newInteger(low);
-				break;
+			}
+			break;
 
-			case 7: 	/* new object allocation */
-				low = integerValue(stack->data[--stackTop]);
-				rootStack[rootTop++] = stack->data[--stackTop];
-				returnedValue = gcalloc(low);
-				returnedValue->class = rootStack[--rootTop];
-				while (low > 0)
-					returnedValue->data[--low] = nilObject;
-				break;
+		case 10: 	/* small integer addition */
+			GET_HIGH_LOW();
+			x = high + low;
+			if (x < high) {
+				/* overflow... do it with 64 bits */
+				returnedValue = newLInteger(
+					(long long)high + (long long)low);
+			} else {
+				returnedValue = newInteger(x);
+			}
+			break;
+			
+		case 11: 	/* small integer division */
+			GET_HIGH_LOW();
+			if (low == 0) {
+				goto failPrimitive;
+			}
+			high /= low;
+			returnedValue = newInteger(high);
+			break;
+			
+		case 12:	/* small integer remainder */ 
+			GET_HIGH_LOW();
+			if (low == 0) {
+				goto failPrimitive;
+			}
+			high %= low;
+			returnedValue = newInteger(high);
+			break;
+			
+		case 13:	/* small integer less than */ 
+			GET_HIGH_LOW();
+			if (high < low) {
+				returnedValue = trueObject;
+			} else {
+				returnedValue = falseObject;
+			}
+			break;
 
-			case 8:	/* block invocation */
-				/* low holds number of arguments */
-				returnedValue = stack->data[--stackTop];
-					/* put arguments in place */
-				high = integerValue(
-					returnedValue->data[
-						argumentLocationInBlock]);
-				temporaries = 
-					returnedValue->data[temporariesInBlock];
-				low -= 2;
-				while (low >= 0) {
-					temporaries->data[high + low] =
-						stack->data[--stackTop];
-					low--;
-					}
-				returnedValue->data[previousContextInBlock] =
-					context->data[previousContextInContext];
-				context = returnedValue;
-				arguments = instanceVariables =
-					literals = 0;
-				stack = context->data[stackInContext];
-				stackTop = 0;
-				method = context->data[methodInBlock];
-				bp = bytePtr(method->data[byteCodesInMethod]);
-				bytePointer = integerValue(
-					context->data[bytePointerInBlock]);
-				--rootTop;
-				goto endPrimitive;
+		case 14:	/* small integer equality */ 
+			GET_HIGH_LOW();
+			if (high == low) {
+				returnedValue = trueObject;
+			} else {
+				returnedValue = falseObject;
+			}
+			break;
 
-			case 9:		/* read char from input */
-				low = getchar();
-				if (low == EOF)
-					returnedValue = nilObject;
-				else returnedValue = newInteger(low);
-				break;
+		case 15:	/* small integer multiplication */ 
+			GET_HIGH_LOW();
+			x = high*low;
+			if (x < high) {
+				/* overflow... do it with 64 bits */
+				returnedValue = newLInteger(
+					(long long)high * (long long)low);
+			} else {
+				returnedValue = newInteger(x);
+			}
+			break;
 
-			case 10: 	/* small integer addition */
-				GET_HIGH_LOW();
-				high += low;
-				returnedValue = newInteger(high);
-				break;
-				
-			case 11: 	/* small integer division */
-				GET_HIGH_LOW();
-				if (low == 0) {
-					goto failPrimitive;
-				}
-				high /= low;
-				returnedValue = newInteger(high);
-				break;
-				
-			case 12:	/* small integer remainder */ 
-				GET_HIGH_LOW();
-				if (low == 0) {
-					goto failPrimitive;
-				}
-				high %= low;
-				returnedValue = newInteger(high);
-				break;
-				
-			case 13:	/* small integer less than */ 
-				GET_HIGH_LOW();
-				if (high < low) {
-					returnedValue = trueObject;
-				} else {
-					returnedValue = falseObject;
-				}
-				break;
+		case 16:	/* small integer subtraction */ 
+			GET_HIGH_LOW();
+			if (low < high) {
+				high -= low;
+			} else {
+				high = 0;
+			}
+			returnedValue = newInteger(high);
+			break;
 
-			case 14:	/* small integer equality */ 
-				GET_HIGH_LOW();
-				if (high == low) {
-					returnedValue = trueObject;
-				} else {
-					returnedValue = falseObject;
-				}
-				break;
+		case 18: 	/* turn on debugging */
+			debugging = 1;
+			returnedValue = nilObject;
+			break;
 
-			case 15:	/* small integer multiplication */ 
-				GET_HIGH_LOW();
-				high *= low;
-				returnedValue = newInteger(high);
-				break;
+		case 19:	/* error trap -- halt execution */
+			--rootTop; /* pop context */
+			aProcess = rootStack[--rootTop];
+			aProcess->data[contextInProcess] = context;
+			return 2;
 
-			case 16:	/* small integer subtraction */ 
-				GET_HIGH_LOW();
-				if (low < high) {
-					high -= low;
-				} else {
-					high = 0;
-				}
-				returnedValue = newInteger(high);
-				break;
+		case 20:	/* byteArray allocation */
+			low = integerValue(stack->data[--stackTop]);
+			rootStack[rootTop++] = stack->data[--stackTop];
+			returnedValue = gcialloc(low);
+			returnedValue->class = rootStack[--rootTop];
+			break;
 
-			case 18: 	/* turn on debugging */
-				debugging = 1;
-				returnedValue = nilObject;
-				break;
+		case 21:	/* string at */
+			low = integerValue(stack->data[--stackTop])-1;
+			returnedValue = stack->data[--stackTop];
+			if ((low < 0) ||
+			 (low >= (returnedValue->size >> 2))) {
+				goto failPrimitive;
+			}
+			low = bytePtr(returnedValue)[low];
+			returnedValue = newInteger(low);
+			break;
 
-			case 19:	/* error trap -- halt execution */
-				--rootTop; /* pop context */
-				aProcess = rootStack[--rootTop];
-				aProcess->data[contextInProcess] = context;
-				return 2;
+		case 22:	/* string at put */
+			low = integerValue(stack->data[--stackTop])-1;
+			returnedValue = stack->data[--stackTop];
+			if ((low < 0) ||
+			 (low >= (returnedValue->size >> 2))) {
+				stackTop -= 1;
+				goto failPrimitive;
+			}
+			bytePtr(returnedValue)[low] =
+				integerValue(stack->data[--stackTop]);
+			break;
 
-			case 20:	/* byteArray allocation */
-				low = integerValue(stack->data[--stackTop]);
-				rootStack[rootTop++] = stack->data[--stackTop];
-				returnedValue = gcialloc(low);
-				returnedValue->class = rootStack[--rootTop];
-				break;
-
-			case 21:	/* string at */
-				low = integerValue(stack->data[--stackTop])-1;
-				returnedValue = stack->data[--stackTop];
-				if ((low < 0) ||
-				 (low >= (returnedValue->size >> 2))) {
-				 	goto failPrimitive;
-				}
-				low = bytePtr(returnedValue)[low];
-				returnedValue = newInteger(low);
-				break;
-
-			case 22:	/* string at put */
-				low = integerValue(stack->data[--stackTop])-1;
-				returnedValue = stack->data[--stackTop];
-				if ((low < 0) ||
-				 (low >= (returnedValue->size >> 2))) {
-					stackTop -= 1;
-				 	goto failPrimitive;
-				}
+		case 23:	/* string clone */
+			rootStack[rootTop++] = stack->data[--stackTop];
+			rootStack[rootTop++] = returnedValue 
+				= stack->data[--stackTop];
+			low = returnedValue->size >> 2;
+			returnedValue = gcialloc(low);
+			messageSelector = rootStack[--rootTop];
+			while (low-- > 0)
 				bytePtr(returnedValue)[low] =
-					integerValue(stack->data[--stackTop]);
-				break;
+					bytePtr(messageSelector)[low];
+			returnedValue->class = rootStack[--rootTop];
+			break;
 
-			case 23:	/* string clone */
-				rootStack[rootTop++] = stack->data[--stackTop];
-				rootStack[rootTop++] = returnedValue 
-					= stack->data[--stackTop];
-				low = returnedValue->size >> 2;
-				returnedValue = gcialloc(low);
-				messageSelector = rootStack[--rootTop];
-				while (low-- > 0)
-					bytePtr(returnedValue)[low] =
-						bytePtr(messageSelector)[low];
-				returnedValue->class = rootStack[--rootTop];
-				break;
-
-			case 24:	/* array at */
-				low = integerValue(stack->data[--stackTop])-1;
-				returnedValue = stack->data[--stackTop];
-				if ((low < 0) ||
-				 (low >= (returnedValue->size >> 2))) {
-					goto failPrimitive;
-				}
-				returnedValue = returnedValue->data[low];
-				break;
+		case 24:	/* array at */
+			low = integerValue(stack->data[--stackTop])-1;
+			returnedValue = stack->data[--stackTop];
+			if ((low < 0) ||
+			 (low >= (returnedValue->size >> 2))) {
+				goto failPrimitive;
+			}
+			returnedValue = returnedValue->data[low];
+			break;
 #undef GET_HIGH_LOW
 
-			case 25:	/* Integer division */
-			case 26:	/* Integer remainder */
-			case 27:	/* Integer addition */
-			case 28:	/* Integer multiplication */
-			case 29:	/* Integer subtraction */
-			case 30:	/* Integer less than */
-			case 31:	/* Integer equality */
-				op = stack->data[--stackTop];
-				if (op->class != IntegerClass) {
-					stackTop -= 1;
-					goto failPrimitive;
-				}
-				returnedValue = stack->data[--stackTop];
-				if (returnedValue->class != IntegerClass) {
-					goto failPrimitive;
-				}
-				returnedValue = do_Integer(high,
-					returnedValue, op);
-				if (returnedValue == NULL) {
-					goto failPrimitive;
-				}
-				break;
-
-			default:
-					/* pop arguments, try primitive */
-				rootStack[rootTop++] = stack;
-				arguments = gcalloc(low);
-				stack = rootStack[--rootTop];
-				while (low > 0)
-					arguments->data[--low] = 
-						stack->data[--stackTop];
-				returnedValue = primitive(high, arguments);
-				arguments = 0;
-				break;
+		case 25:	/* Integer division */
+		case 26:	/* Integer remainder */
+		case 27:	/* Integer addition */
+		case 28:	/* Integer multiplication */
+		case 29:	/* Integer subtraction */
+		case 30:	/* Integer less than */
+		case 31:	/* Integer equality */
+			op = stack->data[--stackTop];
+			if (op->class != IntegerClass) {
+				stackTop -= 1;
+				goto failPrimitive;
 			}
+			returnedValue = stack->data[--stackTop];
+			if (returnedValue->class != IntegerClass) {
+				goto failPrimitive;
+			}
+			returnedValue = do_Integer(high,
+				returnedValue, op);
+			if (returnedValue == NULL) {
+				goto failPrimitive;
+			}
+			break;
 
-			/*
-			 * Restore our context pointer and
-			 * force a stack return due to successful
-			 * primitive.
-			 */
-			context = rootStack[--rootTop];
-			goto doReturn;
+		default:
+				/* pop arguments, try primitive */
+			rootStack[rootTop++] = stack;
+			arguments = gcalloc(low);
+			stack = rootStack[--rootTop];
+			while (low > 0)
+				arguments->data[--low] = 
+					stack->data[--stackTop];
+			returnedValue = primitive(high, arguments);
+			arguments = 0;
+			break;
+		}
+
+		/*
+		 * Restore our context pointer and
+		 * force a stack return due to successful
+		 * primitive.
+		 */
+		context = rootStack[--rootTop];
+		goto doReturn;
 
 failPrimitive:
 		/*

@@ -1198,12 +1198,34 @@ factorial
 	ifFalse: [ ^ (self - 1) factorial * self ]
 !
 METHOD Number
-printString
-	(self negative) ifTrue:
-		[ ^ '-' + (self negated printString) ].
+asDigit
 	(self < 10) ifTrue:
-		[ ^ (Char new: (self asSmallInt + 48)) asString ].
-	^ (self quo: 10) printString + (self rem: 10) printString
+		[ ^(Char new: (self asSmallInt + 48)) asString ].
+	^(Char new: (self asSmallInt + 55)) asString
+!
+METHOD Number
+printWidth: width base: base | res n dig |
+	(self negative)
+		ifTrue: [ res <- '-'. n <- n negated ]
+		ifFalse: [ res <- ''. n <- self ].
+	[true] whileTrue: [
+		res <- ((n rem: base) asDigit) + res.
+		n <- n quo: base.
+		(n = 0) ifTrue: [
+			((res size)+1) to: width do: [:ignore|
+				res <- '0' + res
+			].
+			^res
+		]
+	]
+!
+METHOD Number
+printWidth: width
+	^self printWidth: width base: 10
+!
+METHOD Number
+printString
+	^self printWidth: 1 base: 10
 !
 METHOD Number
 to: limit

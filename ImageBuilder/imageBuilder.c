@@ -337,19 +337,37 @@ newDictionary(void)
 /*	Code Generation   */
 /* ------------------------------------------------------------- */
 
-static int lastOp = 0;
-
-# define ByteBufferTop 255
+# define ByteBufferTop 512
 static unsigned char byteBuffer[ByteBufferTop];
 static unsigned byteTop;
 
 static void
 genByte(int v)
 {
-	lastOp = 0;
 	byteBuffer[byteTop++] = v;
-	if (byteTop >= ByteBufferTop)
+	if (byteTop >= ByteBufferTop) {
 		sysError("too many bytecodes", "");
+	}
+}
+
+static void
+genVal(int v)
+{
+	if ((v < 0) || (v > 0xFFFF)) {
+		sysError("illegal value", "");
+	}
+	genByte(v & 0xFF);
+	genByte(v >> 8);
+}
+
+static void
+genValPos(int pos, int v)
+{
+	if ((v < 0) || (v > 0xFFFF)) {
+		sysError("illegal value", "");
+	}
+	byteBuffer[pos] = v & 0xFF;
+	byteBuffer[pos+1] = v >> 8;
 }
 
 static void
@@ -358,12 +376,10 @@ genInstruction(int a, int b)
 	/*printf("gen instruction %d %d\n", a, b);*/
 	if (b < 16) {
 		genByte(a * 16 + b);
-		lastOp = a;
-		}
-	else {
+	} else {
 		genInstruction(0, a);
 		genByte(b);
-		}
+	}
 }
 
 static struct object *
@@ -728,7 +744,7 @@ parseBlock(void)
 	p++; skipSpaces();
 	genInstruction(PushBlock, tempTop);
 	savedLocation = byteTop;
-	genByte(0);
+	genVal(0);
 
 	saveTop = tempTop; argCount = 0;
 	if (*p == ':') {
@@ -768,7 +784,7 @@ parseBlock(void)
 	}
 	p++; skipSpaces();	/* skip over ] */
 	genInstruction(DoSpecial, StackReturn);
-	byteBuffer[savedLocation] = byteTop;
+	genValPos(savedLocation, byteTop);
 	tempTop = saveTop;
 
 	/* set blockbackup to textual start of block */
@@ -940,25 +956,24 @@ controlFlow(int opt1, char * rest, int opt2)
 
 	genInstruction(DoSpecial, opt1);
 	save1 = byteTop;
-	genByte(0);
+	genVal(0);
 	if (!optimizeBlock()) {
 		parseError("syntax error in control flow");
 	}
 	genInstruction(DoSpecial, Branch);
 	save2 = byteTop;
-	genByte(0);
-	byteBuffer[save1] = byteTop;
+	genVal(0);
+	genValPos(save1, byteTop);
 	q = p;
 	if (isIdentifierChar(*p) && readIdentifier() && (strcmp(tokenBuffer, rest) == 0)) {
 		if (!optimizeBlock()) {
 			parseError("syntax error in control cascade");
 		}
-		lastOp = 0;
 	} else {
 		p = q;
 		genInstruction(PushConstant, opt2);
 	}
-	byteBuffer[save2] = byteTop;
+	genValPos(save2, byteTop);
 	return 1;
 }
 
@@ -973,15 +988,15 @@ optimizeLoop(int branchInstruction)
 	optimizeBlock();
 	genInstruction(DoSpecial, branchInstruction);
 	L2 = byteTop;
-	genByte(0);
+	genVal(0);
 	if (!(isIdentifierChar(*p) && readIdentifier()))
 		return parseError("can't get message again in optimized block");
 	/* now read the body */
 	optimizeBlock();
 	genInstruction(DoSpecial, PopTop);
 	genInstruction(DoSpecial, Branch);
-	genByte(L1);
-	byteBuffer[L2] = byteTop;
+	genVal(L1);
+	genValPos(L2, byteTop);
 	genInstruction(PushConstant, 0);
 	return 1;
 }

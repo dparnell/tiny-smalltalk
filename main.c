@@ -12,7 +12,7 @@
 	the following defaults must be set
 
 */
-# define DefaultImageFile "image"
+# define DefaultImageFile "ImageBuilder/image"
 # define DefaultStaticSize 40000
 # define DefaultDynamicSize 40000
 
@@ -107,6 +107,8 @@ main(int argc, char ** argv)
 			staticSize = atoi(argv[++i]);
 		} else if (strcmp(argv[i], "-d") == 0) {
 			dynamicSize = atoi(argv[++i]);
+		} else if (strcmp(argv[i], "-g") == 0) {
+			debugging = 1;
 		} else {
 			strcpy(imageFileName, argv[i]);
 			}

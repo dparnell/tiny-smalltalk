@@ -1,6 +1,6 @@
-+Set subclass: #Diction
-+IdentitySet subclass: #IdentityDiction
-!Diction
++Set subclass: #Dict
++Dict subclass: #RotorDict variables: #(rotor)
+!Dict
 at: key ifAbsent: aBlock | pos assoc |
 	pos <- self location: key.
 	((pos isNil) or: [(assoc <- members at: pos) isNil]) ifTrue: [
@@ -8,7 +8,7 @@ at: key ifAbsent: aBlock | pos assoc |
 	].
 	^ assoc value
 !
-!Diction
+!Dict
 at: key put: value | assoc pos |
 	" Create the Association "
 	assoc <- Association key: key value: value.
@@ -18,57 +18,82 @@ at: key put: value | assoc pos |
 
 	^ value
 !
-!Diction
+!Dict
 binaryDo: aBlock
 	members do: [:assoc|
 		assoc notNil ifTrue: [ aBlock value: (assoc key)
 			value: (assoc value) ]
 	]
 !
-!Diction
+!Dict
 keysDo: aBlock
 	members do: [:assoc|
 		assoc notNil ifTrue: [ aBlock value: (assoc key) ]
 	]
 !
-!Diction
+!Dict
 associationsDo: aBlock
 	members do: [:assoc|
 		assoc notNil ifTrue: [ aBlock value: assoc ]
 	]
 !
-!Diction
+!Dict
 basicDo: aBlock
 	^ self associationsDo: aBlock
 !
-!Diction
+!Dict
 keysAsArray | i ret |
 	ret <- Array new: self size.
 	i <- 1.
 	members do: [:assoc| ret at: i put: assoc key. i <- i + 1 ].
 	^ ret
 !
-!Diction
+!Dict
 isEmpty
 	members do: [:assoc| assoc notNil ifTrue: [ ^ false ]].
 	^ true
 !
-!Diction
+!Dict
 do: aBlock
 	members do: [:assoc| assoc notNil ifTrue:
 		[ aBlock value: (assoc value) ] ]
 !
-!Diction
+!Dict
 removeKey: key ifAbsent: aBlock | assoc |
 	assoc <- Association key: key value: nil.
 	super remove: assoc ifAbsent: [ ^ aBlock value ].
 	^ key
 !
-!Diction
+!Dict
 removeKey: key
 	^ self removeKey: key ifAbsent: [ self noElement ]
 !
-!Diction
+!Dict
 remove: value ifAbsent: ignore
 	self error: 'Can only remove by key'
+!
+!RotorDict
+rotorDo: aBlock | start lim assoc |
+	lim <- members size.
+	rotor isNil ifTrue: [ rotor <- 1 ].
+	start <- rotor.
+	[true] whileTrue: [
+		(rotor > lim) ifTrue: [ rotor <- 1 ].
+		assoc <- members at: rotor.
+		rotor <- rotor + 1.
+		assoc notNil ifTrue: [ aBlock value: assoc ].
+		(rotor = start) ifTrue: [ ^ self ]
+	]
+!
+!RotorDict
+do: aBlock
+	^self rotorDo: [:assoc| aBlock value: assoc value]
+!
+!RotorDict
+keysDo: aBlock
+	^self rotorDo: [:assoc| aBlock value: assoc key]
+!
+!RotorDict
+binaryDo: aBlock
+	^self rotorDo: [:assoc| aBlock value: assoc key value: assoc value]
 !

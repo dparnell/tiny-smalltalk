@@ -1643,11 +1643,14 @@ readChar	| c |
 			c notNil ifTrue: [ Char new: c ]]
 !
 METHOD File
-readLine	| value  c|
+readLine	| value  c |
 	" read a line from input "
+	fileID isNil ifTrue: [ self error: 'cannot read from unopened file' ].
 	value <- ''.
-	[ c <- self readChar.
-	  c isNil ifTrue: [ ^ nil ]. c ~= Char newline ] whileTrue:
+	[ c <- self doRead.
+	  c isNil ifTrue: [ ^ nil ].
+	  c <- Char new: c.
+	  c ~= Char newline ] whileTrue:
 		[ value <- value + c asString ].
 	^ value
 !

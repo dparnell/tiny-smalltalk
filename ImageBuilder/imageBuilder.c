@@ -27,16 +27,9 @@ sysError(char * a, char * b)
 	The following are roots for the file out 
 */
 
-struct object * nilObject;
-struct object * smallInts[10];
-struct object * trueObject;
-struct object * falseObject;
-struct object * globalValues;
-struct object * SmallIntClass;
-struct object * ArrayClass;
-struct object * BlockClass;
-struct object * ContextClass;
-struct object * initialMethod;
+struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
+	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass,
+	*ContextClass, *initialMethod;
 
 struct object * SymbolClass;
 
@@ -1541,7 +1534,9 @@ struct object * fixSymbols() {
 }
 
 
-void fixGlobals() {
+void
+fixGlobals()
+{
 	struct object *t;
 	int i;
 
@@ -1550,6 +1545,10 @@ void fixGlobals() {
 	t->data[0] = newOrderedArray();
 	t->data[1] = newArray(0);
 
+	/*
+	 * Insert each class name as a reference to the class
+	 * object itself.
+	 */
 	for (i = 0; i < globalTop; i++) {
 		if (strncmp(globalNames[i], "Meta", 4) == 0) {
 			continue;
@@ -1557,6 +1556,11 @@ void fixGlobals() {
 		dictionaryInsert(t, newSymbol(globalNames[i]),
 			globals[i]);
 	}
+
+	/*
+	 * Insert this object itself under the name "Smalltalk"
+	 */
+	dictionaryInsert(t, newSymbol("Smalltalk"), t);
 }
 
 /* ------------------------------------------------------------- */

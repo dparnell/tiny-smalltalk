@@ -535,6 +535,10 @@ backtrace | narg |
 	previousContext notNil
 		ifTrue: [ previousContext backtrace ]
 !
+METHOD Context
+previousContext
+	^ previousContext
+!
 COMMENT ---------- Blocks ------------
 METHOD Block
 argCount

@@ -36,6 +36,7 @@ CLASS OrderedArray  Array
 CLASS ByteArray     Array
 CLASS MetaString    Class         MetaArray
 CLASS String        Array
+CLASS Set	    Collection		members size bound
 CLASS Number        Magnitude
 CLASS Integer       Number
 CLASS SmallInt      Number
@@ -906,7 +907,7 @@ insert: value at: position | newArray |
 !
 METHOD Array
 removeIndex: position  | newArray |
-	newArray <- self class new (self size - 1).
+	newArray <- self class new: (self size - 1).
 	1 to: position - 1 do:
 		[:i | newArray at: i put: (self at: i)].
 	position + 1 to: self size do:
@@ -1227,9 +1228,12 @@ new | newDict |
 	^ newDict
 !
 METHOD Dictionary
+noKey
+	self error: 'key not found in dictionary lookup'
+!
+METHOD Dictionary
 at: key
-	^ self at: key
-		ifAbsent: [ ^ self error: 'key not found in dictionary lookup']
+	^ self at: key ifAbsent: [ self noKey ]
 !
 METHOD Dictionary
 at: key put: value | position |
@@ -1257,6 +1261,12 @@ keysDo: aBlock
 	1 to: keys size do: [:i| aBlock value: (keys at: i)]
 !
 METHOD Dictionary
+keysAsArray | i ret |
+	ret <- Array new: keys size.
+	1 to: keys size do: [:i| ret at: i put: (keys at: i)].
+	^ ret
+!
+METHOD Dictionary
 isEmpty
 	^ keys isEmpty
 !
@@ -1273,6 +1283,10 @@ removeKey: key ifAbsent: exceptionBlock | position |
 		ifFalse: [ ^ exceptionBlock value ]
 !
 METHOD Dictionary
+removeKey: key
+	^ self removeKey: key ifAbsent: [ self noKey ]
+!
+METHOD Dictionary
 printString | count res |
 	res <- self class printString + ' ('.
 	count <- 0.
@@ -1283,6 +1297,59 @@ printString | count res |
 		(count >= 20) ifTrue: [ ^ res + ', ...)' ]
 	].
 	^ res + ')'
+!
+COMMENT ---------- Set ------------
+COMMENT A Set... very inefficient.  Revisit when 'hash' is added to the VM.
+COMMENT by Andy Valencia, May 2001
+METHOD MetaSet
+new | ret |
+	ret <- super new.
+	self in: ret at: 1 put: (Array new: 10).
+	self in: ret at: 2 put: 0.
+	self in: ret at: 3 put: 10.
+	^ ret
+!
+METHOD Set
+grow | bigger |
+	bound <- bound + 10.
+	bigger <- Array new: bound.
+	1 to: size do: [:x|
+		bigger at: x put: (members at: x)
+	].
+	members <- bigger
+!
+METHOD Set
+add: elem
+	(self includes: elem) ifTrue: [
+		^ self
+	].
+	(size < bound) ifFalse: [
+		self grow
+	].
+	size <- size + 1.
+	members at: size put: elem
+!
+METHOD Set
+remove: elem ifAbsent: aBlock | pos |
+	pos <- members indexOf: elem.
+	pos isNil ifTrue: [
+		aBlock value
+	].
+	pos to: size do: [:x|
+		members at: x put: (members at: (x+1))
+	].
+	members at: size put: nil.
+	size <- size - 1
+!
+METHOD Set
+remove: elem
+	^ self remove: elem ifAbsent: [self error: 'Element not present']
+!
+METHOD Set
+do: aBlock
+	1 to: size do: [:x|
+		aBlock value: (members at: x)
+	]
 !
 COMMENT ---------- Number ------------
 METHOD MetaNumber

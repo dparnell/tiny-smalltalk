@@ -405,8 +405,11 @@ context: aContext
 	context <- aContext
 !
 METHOD Process
-execute: aContext	| r |
-	context <- aContext.
+context
+	^ context
+!
+METHOD Process
+execute | r |
 	r <- self doExecute: 0.
 	(r = 3) ifTrue: [ 'Message not understood: ' print.
 			result print.  Char newline print ]
@@ -425,9 +428,11 @@ setup: aMethod withArguments: a
 	temporaries <- Array new: method temporarySize.
 !
 METHOD Context
-perform: aMethod withArguments: a
+perform: aMethod withArguments: a | proc |
 	self setup: aMethod withArguments: a.
-	^ Process new execute: self
+	proc <- Process new.
+	proc context: self.
+	^ proc execute
 !
 METHOD Context
 backtrace | narg |

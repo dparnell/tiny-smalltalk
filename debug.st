@@ -1,6 +1,6 @@
 +Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
-+Method subclass: #DebugMethod variables: #(lines textlines vars bpoints)
-+Object subclass: #Debug variables: #(proc)
++Method subclass: #DebugMethod variables: #(lines textlines vars bpoints active)
++Object subclass: #Debug variables: #(proc bpoints)
 !DebugEncoder
 name: n
 	lines <- Dictionary new.
@@ -71,14 +71,13 @@ setDebug: sel | meth cl dict |
 !Debug
 runIt: count | ret |
 	" Execute for one instruction.  Return whether or not the return
-	 was 'normal' (i.e., VM stopped due to single stepping, not
+	 was 'normal' (i.e., VM stopped due to debugger control, not
 	 something else "
 	ret <- proc doExecute: count+1.
-	(ret = 5) ifTrue: [ ^ true ].
+	((ret = 5) or: [ret = 6]) ifTrue: [ ^ true ].
 	(ret = 2) ifTrue: [ 'Error trap' printNl ].
 	(ret = 3) ifTrue: [ 'Message not understood' printNl ].
 	(ret = 4) ifTrue: [ 'Method returned' printNl ].
-	" (ret = 6) ifTrue: [ 'Breakpoint' printNl ]. "
 	^ false
 !
 !Context
@@ -154,7 +153,8 @@ run: line | meth ret ctx proc |
 !
 !Debug
 proc: p
-	proc <- p
+	proc <- p.
+	bpoints <- Array new: 0
 !
 !Debug
 atCall | ret meth ctx pc low high |
@@ -200,6 +200,21 @@ stepCall: sel | ctx stack sp args target meth |
 	^ false
 !
 !Debug
+onBreak | ctx meth rec |
+	ctx <- proc context.
+	meth <- ctx method.
+	1 to: bpoints size do: [:idx|
+		rec <- bpoints at: idx.
+		((rec at: 1) = meth) ifTrue: [
+			'Breakpoint ' print. idx print. ' hit in ' printNl.
+			meth name printString print. ':' print.
+			(rec at: 2) printNl.
+			^ true
+		]
+	].
+	^ false
+!
+!Debug
 overCall: pc | ctx old res meth |
 	" Set a breakpoint at the instruction beyond the SendMessage "
 	ctx <- proc context.
@@ -219,6 +234,11 @@ overCall: pc | ctx old res meth |
 	" Should be stopped at the expected location "
 	((proc context = ctx) and:
 			[ ctx bytePointer = pc ]) ifTrue: [
+		^ false
+	].
+
+	" Perhaps a breakpoint? "
+	self onBreak ifTrue: [
 		^ false
 	].
 
@@ -287,6 +307,79 @@ examine: args | ctx meth |
 	]
 !
 !Debug
+setBreak: args | s cl clname meth methname i rec lineNum |
+	" Set the listed breakpoints "
+	args do: [:arg|
+		" Parse <class>:<method> "
+		s <- arg break: ':'.
+		clname <- (s at: 1) asSymbol.
+		methname <- (s at: 2) asSymbol.
+
+		" TBD: break at line # "
+		lineNum <- 1.
+
+		" Find class "
+		cl <- Smalltalk at: clname ifAbsent: [
+			('Unknown class: ' + clname) printNl.
+			^ nil
+		].
+
+		" Now get method, in its debuggable format "
+		meth <- cl setDebug: methname.
+
+		" If it's already set, don't do it again "
+		rec <- Array with: meth with: lineNum.
+		i <- bpoints indexOfVal: rec.
+		i notNil ifTrue: [
+			'Already set as breakpoint ' print.
+			i printNl
+		] ifFalse: [
+			" Set & record the breakpoint "
+			meth setBreak: 0.
+			bpoints <- bpoints with: rec
+		]
+	]
+!
+!Debug
+clearBreak: args | arg n rec meth lineNum |
+	arg <- args at: 1 ifAbsent: ['Missing argument' printNl. ^ nil].
+	n <- arg asNumber.
+	n isNil ifTrue: [
+		('Invalid argument: ' + arg) printNl
+	] ifFalse: [
+		((n < 1) or: [n > bpoints size]) ifTrue: [
+			('No such breakpoint: ' + arg) printNl
+		] ifFalse: [
+			rec <- bpoints at: n.
+			meth <- rec at: 1.
+			lineNum <- rec at: 2.
+			meth clearBreak: 0.
+			bpoints <- bpoints removeIndex: n.
+			n print. ': deleted' printNl
+		]
+	]
+!
+!Debug
+listBreak | rec meth lineNum |
+	'Breakpoints:' printNl.
+	1 to: bpoints size do: [:x|
+		x print. ': ' print.
+		rec <- bpoints at: x.
+		meth <- rec at: 1.
+		lineNum <- rec at: 2.
+		meth name printString print. ':' print.
+		lineNum printNl
+	]
+!
+!Debug
+breakActive: flag | meths |
+	meths <- Set new.
+	bpoints do: [:rec|
+		meths add: (rec at: 1)
+	].
+	meths do: [:meth| meth breakActive: flag]
+!
+!Debug
 run | prev did cmd done line |
 	prev <- ''.
 	done <- false.
@@ -297,11 +390,20 @@ run | prev did cmd done line |
 		" Get command "
 		'Debug> ' print.
 		line <- String input.
+
+		" Re-insert previous command if empty line "
+		(line isEmpty) ifTrue: [ line <- prev ].
+		prev <- line.
+
+		" Parse into words "
 		line <- line break: ' '.
+
+		" Command is first, arguments follow "
 		cmd <- line at: 1.
+		line <- line from: 2 to: line size.
+
+		" Set flag to indicate command hasn't matched yet "
 		did <- false.
-		(cmd isEmpty) ifTrue: [ cmd <- prev ].
-		prev <- cmd.
 
 		" Step a single VM instruction "
 		(cmd = 'stepi') ifTrue: [
@@ -337,9 +439,29 @@ run | prev did cmd done line |
 			did <- true
 		].
 
+		" Set a breakpoint "
+		((cmd = 'b') or: [cmd = 'break']) ifTrue: [
+			self setBreak: line.
+			did <- true
+		].
+
+		" Clear breakpoint(s) "
+		((cmd = 'd') or: [cmd = 'delete']) ifTrue: [
+			self clearBreak: line.
+			did <- true
+		].
+
+		" List breakpoints "
+		((cmd = 'lb') or: [cmd = 'listbreaks']) ifTrue: [
+			self listBreak.
+			did <- true
+		].
+
 		" Just let it run "
 		((cmd = 'cont') or: [cmd = 'c']) ifTrue: [
+			self breakActive: true.
 			proc execute.
+			self breakActive: false.
 			^ nil
 		].
 
@@ -386,7 +508,8 @@ asLines | c ret slot idx base top nl |
 debug: l
 	lines <- l.
 	textlines <- text asLines.
-	bpoints <- Dictionary new
+	bpoints <- Dictionary new.
+	active <- false
 !
 !DebugMethod
 debug
@@ -442,8 +565,10 @@ setBreak: bp | old |
 	" Record current opcode at code location "
 	old <- byteCodes at: (bp + 1).
 
-	" Patch in a DoSpecial operation 12 (breakpoint) "
-	byteCodes at: (bp + 1) put: ((15*16) + 12).
+	" Update the code location if it's already active "
+	active ifTrue: [
+		self patchBreak: bp active: true
+	].
 
 	" Record this breakpoint "
 	bpoints at: bp put: old
@@ -454,18 +579,39 @@ clearBreak: bp
 	(bpoints includes: bp) ifFalse: [ ^ self ].
 
 	" Restore code contents "
-	byteCodes at: (bp + 1) put: (bpoints at: bp).
+	self patchBreak: bp active: false.
 
 	" Remove record of this breakpoint "
 	bpoints removeKey: bp
 !
 !DebugMethod
 clearAll
-	self breakpoints do: [:k|
+	bpoints keysDo: [:k|
 		self clearBreak: k
 	]
 !
 !DebugMethod
 breakpoints
 	^ bpoints keysAsArray
+!
+!DebugMethod
+patchBreak: bp active: flag
+	flag ifTrue: [
+		" Patch in a DoSpecial operation 12 (breakpoint) "
+		byteCodes at: (bp + 1) put: ((15*16) + 12)
+	] ifFalse: [
+		" Restore old code at this location "
+		byteCodes at: (bp + 1) put: (bpoints at: bp)
+	]
+!
+!DebugMethod
+breakActive: flag
+	" Skip all this if we aren't changing settings "
+	(active = flag) ifTrue: [ ^ self ].
+
+	" For each location with a breakpoint, update it "
+	bpoints keysDo: [:bp|
+		self patchBreak: bp active: flag
+	].
+	active <- flag
 !

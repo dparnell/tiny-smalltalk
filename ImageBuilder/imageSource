@@ -2005,6 +2005,11 @@ openWrite: name
 	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'w')
 !
 METHOD MetaFile
+openUpdate: name
+		" open new file for reading and writing "
+	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'rw')
+!
+METHOD MetaFile
 fileIn: name | file |
 	file <- self openRead: name.
 	file opened ifFalse: [ ^ self error: 'cannot open file ' + name ].
@@ -2043,22 +2048,26 @@ writeImage
 		ifTrue: [ <104 fileID> ]
 !
 METHOD File
+notOpened
+	self error: 'file is not open'
+!
+METHOD File
 writeCharValue: n
-	^ fileID isNil
-		ifTrue: [ self error: 'cannot write to unopned file']
-		ifFalse: [ <102 fileID n> ]
+	<102 fileID n>.
+	fileID isNil ifTrue: [ self notOpened ].
+	self primitiveFailed
 !
 METHOD File
 doRead
-	<101 fileID>
+	<101 fileID>.
+	fileID isNil ifTrue: [ self notOpened ].
+	self primitiveFailed
 !
 METHOD File
 readChar	| c |
 		" read a single character from a file "
-	^ fileID isNil
-		ifTrue: [ self error: 'cannot read from unopened file']
-		ifFalse: [ c <- self doRead.
-			c notNil ifTrue: [ Char new: c ]]
+	c <- self doRead.
+	c notNil ifTrue: [ ^ Char new: c ]
 !
 METHOD File
 readLine	| value  c nl |

@@ -80,9 +80,6 @@ main(int argc, char ** argv)
 	FILE *fp;
 	char imageFileName[120], *p;
 
-#if defined(VSTA) && defined(DEBUG)
-	notify_handler(NULL);
-#endif
 	strcpy(imageFileName, DefaultImageFile);
 	staticSize = DefaultStaticSize;
 	dynamicSize = DefaultDynamicSize;
@@ -208,7 +205,7 @@ getUnixString(char * to, int size, struct object * from)
 }
 
 struct object *
-primitive(int primitiveNumber, struct object * args)
+primitive(int primitiveNumber, struct object *args, int *failed)
 {
 	struct object *returnedValue = nilObject;
 	int i, j;
@@ -217,6 +214,7 @@ primitive(int primitiveNumber, struct object * args)
 	struct byteObject * stringReturn;
 	char nameBuffer[80], modeBuffer[80];
 
+	*failed = 0;
 	switch(primitiveNumber) {
 	case 100: 	/* open a file */
 		getUnixString(nameBuffer, 80, args->data[0]);
@@ -225,18 +223,25 @@ primitive(int primitiveNumber, struct object * args)
 		if (fp != NULL) {
 			if (fileTop + 1 >= FILEMAX) {
 				sysError("too many open files", 0);
+				fclose(fp);
+				*failed = 1;
+			} else {
+				returnedValue = newInteger(fileTop);
+				filePointers[fileTop++] = fp;
 			}
-			returnedValue = newInteger(fileTop);
-			filePointers[fileTop++] = fp;
+		} else {
+			*failed = 1;
 		}
 		break;
 
 	case 101:	/* read a single character from a file */
 		if (!IS_SMALLINT(args->data[0])) {
+			*failed = 1;
 			break;
 		}
 		i = integerValue(args->data[0]);
 		if ((i < 0) || (i >= FILEMAX)) {
+			*failed = 1;
 			break;
 		}
 		i = fgetc(filePointers[i]);
@@ -248,10 +253,12 @@ primitive(int primitiveNumber, struct object * args)
 	case 102:	/* write a single character to a file */
 		if (!IS_SMALLINT(args->data[0])
 				|| !IS_SMALLINT(args->data[1])) {
+			*failed = 1;
 			break;
 		}
 		i = integerValue(args->data[0]);
 		if ((i < 0) || (i >= FILEMAX)) {
+			*failed = 1;
 			break;
 		}
 		fputc(integerValue(args->data[1]), filePointers[i]);
@@ -259,10 +266,12 @@ primitive(int primitiveNumber, struct object * args)
 
 	case 103:	/* close file */
 		if (!IS_SMALLINT(args->data[0])) {
+			*failed = 1;
 			break;
 		}
 		i = integerValue(args->data[0]);
 		if ((i < 0) || (i >= FILEMAX)) {
+			*failed = 1;
 			break;
 		}
 		fclose(filePointers[i]);
@@ -316,5 +325,5 @@ primitive(int primitiveNumber, struct object * args)
 	default:
 		sysError("unknown primitive", primitiveNumber);
 	}
-	return returnedValue;
+	return(returnedValue);
 }

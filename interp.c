@@ -28,8 +28,6 @@ extern int debugging;
 extern int cacheHit;
 extern int cacheMiss;
 
-extern struct object *primitive(int, struct object *);
-
 /*
 	The following are roots for the file out 
 */
@@ -980,7 +978,15 @@ checkCache:
 			    arguments->data[--low] = 
 				    stack->data[--stackTop];
 		    }
-		    returnedValue = primitive(high, arguments);
+		    {
+			    int failed;
+
+			returnedValue =
+				primitive(high, arguments, &failed);
+		    	if (failed) {
+				goto failPrimitive;
+			}
+		    }
 		    arguments = 0;
 		    break;
 	    }

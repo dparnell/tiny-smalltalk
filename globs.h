@@ -9,5 +9,6 @@
 
 extern int fileIn(FILE * fp), fileOut(FILE * fp);
 extern void sysError(char *, unsigned int), flushCache(void);
+extern struct object *primitive(int, struct object *, int *);
 
 #endif /* GLOBS_H */

@@ -540,10 +540,11 @@ execute(struct object *aProcess)
 		switch (high) {
 			case 1:		/* object identity */
 				returnedValue = stack->data[--stackTop];
-				if (returnedValue == stack->data[--stackTop])
+				if (returnedValue == stack->data[--stackTop]) {
 					returnedValue = trueObject;
-				else
+				} else {
 					returnedValue = falseObject;
+				}
 				break;
 
 			case 2:		/* object class */
@@ -563,9 +564,15 @@ execute(struct object *aProcess)
 				break;
 
 			case 5:		/* object at put */
-				low = integerValue(stack->data[--stackTop]);
+				low = integerValue(stack->data[--stackTop])-1;
 				returnedValue = stack->data[--stackTop];
-				returnedValue->data[low-1] 
+				/* Bounds check */
+				if ((low < 0) ||
+				 (low >= (returnedValue->size >> 2))) {
+					stackTop -= 1;
+					goto failPrimitive;
+				}
+				returnedValue->data[low] 
 					= stack->data[--stackTop];
 				/*
 				 * If putting a non-static pointer
@@ -576,7 +583,7 @@ execute(struct object *aProcess)
 						&& isDynamicMemory(
 						 stack->data[stackTop])) {
 					addStaticRoot(
-					 &returnedValue->data[low-1]);
+					 &returnedValue->data[low]);
 				}
 				break;
 
@@ -752,9 +759,13 @@ execute(struct object *aProcess)
 				break;
 
 			case 24:	/* array at */
-				low = integerValue(stack->data[--stackTop]);
+				low = integerValue(stack->data[--stackTop])-1;
 				returnedValue = stack->data[--stackTop];
-				returnedValue = returnedValue->data[low-1];
+				if ((low < 0) ||
+				 (low >= (returnedValue->size >> 2))) {
+					goto failPrimitive;
+				}
+				returnedValue = returnedValue->data[low];
 				break;
 
 			default:

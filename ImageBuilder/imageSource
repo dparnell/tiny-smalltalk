@@ -736,18 +736,20 @@ new: size
 	<7 self size>
 !
 METHOD Array
-at: index
-	^ self at: index ifAbsent: [ self error: 'out of range array index']
+badIndex
+	self error: 'array indexing error'
 !
 METHOD Array
-basicAt: index
+at: index
 	<24 self index>
+	(self includesKey: index) ifFalse: [ self badIndex ].
+	self primitiveFailed
 !
 METHOD Array
 at: index ifAbsent: exceptionBlock
-	(self includesKey: index)
-	     ifTrue: [ ^ self basicAt: index ]
-	     ifFalse: [ ^ exceptionBlock value ]
+	<24 self index>
+	(self includesKey: index) ifFalse: [ exceptionBlock value ].
+	self primitiveFailed
 !
 METHOD Array
 includes: aValue
@@ -782,15 +784,10 @@ size
 	<4 self>
 !
 METHOD Array
-basicAt: index put: value
-	<5 value self index>
-!
-METHOD Array
 at: index put: value
-	(self includesKey: index)
-		ifTrue: [self basicAt: index put: value]
-		ifFalse: [ ^ self error: 'array indexing error '
-			+ self size printString + ' '+ index printString ]
+	<5 value self index>
+	(self includesKey: index) ifFalse: [ self badIndex ].
+	self primitiveFailed
 !
 METHOD Array
 do: aBlock
@@ -875,6 +872,10 @@ new: size
 METHOD ByteArray
 basicAt: index
 	<21 self index>
+!
+METHOD ByteArray
+at: index
+	^self at: index ifAbsent: [self badIndex]
 !
 METHOD ByteArray
 at: index ifAbsent: exceptionBlock
@@ -967,6 +968,10 @@ doIt	| meth |
 METHOD String
 basicAt: index
 	<21 self index>
+!
+METHOD String
+at: index
+	^self at: index ifAbsent: [ self badIndex ]
 !
 METHOD String
 at: index ifAbsent: exceptionBlock

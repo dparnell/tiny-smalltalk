@@ -18,7 +18,7 @@ on: obj
 showPos | cnt |
 	' == stack -> ' print.
 	cnt <- 0.
-	stack do: [:obj|
+	stack reverseDo: [:obj|
 		(cnt > 0) ifTrue: [ ' / ' print ].
 		obj print.
 		cnt <- cnt + 1
@@ -147,6 +147,23 @@ on: top | cmd done last obj args idx |
 		" All done "
 		((cmd = 'q') or: [cmd = 'quit']) ifTrue: [
 			^ nil
+		].
+
+		" Help "
+		((cmd = '?') or: [cmd = 'help']) ifTrue: [
+'Commands are:' printNl.
+'i/index <number> - Index Array-type object' printNl.
+'ri <number>      - Raw index into object''s instance vars' printNl.
+'n/nest           - Nest to last displayed object' printNl.
+'c/class          - Display class of current object' printNl.
+'u/up             - Unnest to previous object' printNl.
+'iv/ivars         - List instance vars' printNl.
+'bs/basicsize     - Show basic size' printNl.
+'sz/size          - Show size' printNl.
+'p/print <expr>   - Print arbitrary expression' printNl.
+'q/quit           - Return to system' printNl.
+'?/help           - This display' printNl.
+			done <- true
 		].
 
 		" Unknown command? "

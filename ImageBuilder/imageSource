@@ -245,8 +245,11 @@ METHOD Class
 addMethod: text | meth |
 	meth <- self parseMethod: text.
 	meth notNil
-		ifTrue: [ methods at: meth name put: meth.
-		^ 'method inserted: ' + meth name printString ]
+		ifTrue: [
+			methods at: meth name put: meth.
+			Method flushCache.
+			^ 'method inserted: ' + meth name printString
+		]
 !
 METHOD Class
 view: methodName
@@ -567,6 +570,11 @@ name: n byteCodes: b literals: l stackSize: s temporarySize: ts class: c text: t
 	super in: newMethod at: 6 put: c.
 	super in: newMethod at: 7 put: t.
 	^ newMethod
+!
+METHOD MetaMethod
+flushCache
+	<34>.
+	self primitiveFailed
 !
 METHOD Method
 byteCodes

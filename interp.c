@@ -948,6 +948,10 @@ execute(struct object *aProcess, int ticks)
 		    returnedValue = newInteger(x);
 		    break;
 
+	    case 34:	/* Flush method cache */
+	    	    flushCache();
+		    break;
+
 	    default:
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;

@@ -59,7 +59,8 @@ setDebug: sel | meth cl dict |
 			 parse: self with: DebugEncoder.
 		meth notNil
 		 ifTrue: [
-			cl methods at: sel put: meth
+			cl methods at: sel put: meth.
+			Method flushCache
 		 ]
 		 ifFalse: [
 			'Compilation failed.' printNl.

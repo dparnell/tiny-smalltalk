@@ -16,7 +16,7 @@ genCode: byte
 			lines at: oldLine put: oldRange
 		]
 	].
-	oldRange add: (index + 1).
+	oldRange add: index.
 	^ super genCode: byte
 !
 !DebugEncoder
@@ -273,6 +273,16 @@ doStep: intoCalls | srcl ret |
 	^ false
 !
 !Debug
+printReg: reg in: ctx
+	(reg = '$pc') ifTrue: [
+		ctx bytePointer print. ^ self
+	].
+	(reg = '$sp') ifTrue: [
+		ctx stackTop print. ^ self
+	].
+	'Unknown register: ' print. reg print
+!
+!Debug
 examine: arg | args var ctx meth |
 	" Get the DebugMethod, which has symbolic information for variables "
 	ctx <- proc context.
@@ -288,7 +298,12 @@ examine: arg | args var ctx meth |
 	2 to: args size do: [:x|
 		var <- args at: x.
 		var print. ': ' print.
-		meth print: var in: ctx.
+		((var at: 1) = $$)
+		ifTrue: [
+			self printReg: var in: ctx
+		] ifFalse: [
+			meth print: var in: ctx
+		].
 		Char newline print
 	]
 !
@@ -366,7 +381,7 @@ run | prev did cmd done |
 !DebugMethod
 debug: l
 	lines <- l.
-	textlines <- text break: ((Char new: 10) asString)
+	textlines <- text asLines
 !
 !DebugMethod
 debug
@@ -384,11 +399,9 @@ args: argNames inst: instNames temp: tempNames
 	vars at: 3 put: tempNames
 !
 !DebugMethod
-srcLine: bp | bpx |
-	" Array index version of bp... thanks, Smalltalk "
-	bpx <- bp + 1.
+srcLine: bp
 	lines binaryDo: [:src :range |
-		(range includes: bpx) ifTrue: [
+		(range includes: bp) ifTrue: [
 			^ src
 		]
 	].

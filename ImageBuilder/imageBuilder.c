@@ -43,7 +43,7 @@ gcalloc(int size)
 		malloc(sizeof(struct object) + size * sizeof(struct object *));
 	if (result == 0)
 		sysError("out of memory", "gcalloc");
-	result->size = size << 2;
+	SETSIZE(result, size);
 	while (size > 0)
 		result->data[--size] = nilObject;
 	return result;
@@ -57,7 +57,8 @@ binaryAlloc(int size)
 
 	osize = (size + BytesPerWord - 1) / BytesPerWord;
 	result = (struct byteObject *) gcalloc(osize);
-	result->size = (size << 2) | 01;
+	SETSIZE(result, size);
+	result->size |= FLAG_BIN;
 	return result;
 }
 
@@ -263,8 +264,8 @@ symbolBareCmp(char * left, int leftsize, char * right, int rightsize)
 static int
 symbolCmp(struct object * left, struct object * right)
 {
-	return symbolBareCmp(bytePtr(left), left->size >> 2,
-		bytePtr(right), right->size >> 2);
+	return symbolBareCmp(bytePtr(left), SIZE(left),
+		bytePtr(right), SIZE(right));
 }
 
 static struct object *
@@ -276,7 +277,7 @@ newSymbol(char * text)
 		/* first see if it is already a symbol */
 	for (i = 0; i < symbolTop; i++)
 		if (symbolBareCmp(text, strlen(text),
-			bytePtr(oldSymbols[i]), oldSymbols[i]->size >> 2) == 0)
+			bytePtr(oldSymbols[i]), SIZE(oldSymbols[i])) == 0)
 			return oldSymbols[i];
 
 		/* not there, make a new one */
@@ -652,13 +653,13 @@ lookupInstance(struct object *class, char *text, int *low)
 	/* Check our own list of variables */
 	var = class->data[variablesInClass];
 	if (var && var != nilObject) {
-		size = var->size >> 2;
+		size = SIZE(var);
 	} else {
 		size = 0;
 	}
 	for (i = 0; i < size; i++) {
 		if (symbolBareCmp(text, strlen(text),
-		 bytePtr(var->data[i]), (var->data[i])->size >> 2) == 0) {
+		 bytePtr(var->data[i]), (SIZE(var->data[i]))) == 0) {
 			return(*low);
 		}
 		*low += 1;
@@ -1264,7 +1265,7 @@ insert(struct object *array, int index, struct object *val)
 	 * Clone the current object, including class.  Make one
 	 * extra slot in the Array storage.
 	 */
-	o = gcalloc((array->size >> 2) + 1);
+	o = gcalloc(SIZE(array) + 1);
 	o->class = array->class;
 
 	/*
@@ -1283,7 +1284,7 @@ insert(struct object *array, int index, struct object *val)
 	/*
 	 * Now copy the rest
 	 */
-	for (; j < (array->size >> 2); ++j) {
+	for (; j < SIZE(array); ++j) {
 		o->data[i++] = array->data[j];
 	}
 	return(o);
@@ -1303,7 +1304,7 @@ dictionaryInsert(struct object *dict, struct object *index,
 	/*
 	 * Scan the OrderedArray "keys" to find where we fit in
 	 */
-	for (i = 0, lim = keys->size >> 2; i < lim; ++i) {
+	for (i = 0, lim = SIZE(keys); i < lim; ++i) {
 		res = symbolCmp(index, keys->data[i]);
 
 		/*
@@ -1552,9 +1553,9 @@ imageOut(FILE * fp, struct object * obj)
 	/* not written, do it now */
 	writtenObjects[imageTop++] = obj;
 
-	if (obj->size & 01) {	/* byte objects */
+	if (obj->size & FLAG_BIN) {	/* byte objects */
 		struct byteObject * bobj = (struct byteObject *) obj;
-		size = obj->size >> 2;
+		size = SIZE(obj);
 		writeWord(3, fp);
 		writeWord(size, fp);
 		/*fprintf(fp, "3 %d \n", size);*/
@@ -1571,7 +1572,7 @@ imageOut(FILE * fp, struct object * obj)
 	}
 
 	/* ordinary objects */
-	size = obj->size >> 2;
+	size = SIZE(obj);
 	/*fprintf(fp,"1 %d ", size);*/
 	writeWord(1, fp);
 	writeWord(size, fp);

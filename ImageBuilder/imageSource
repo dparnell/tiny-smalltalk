@@ -818,6 +818,15 @@ occurencesOf: obj | count |
 	self do: [:o| (o = obj) ifTrue: [ count <- count + 1]].
 	^ count
 !
+METHOD Collection
+anyOne
+	self do: [:it| ^ it].
+	self emptyCollection
+!
+METHOD Collection
+emptyCollection
+	self error: (self class printString + ' is empty')
+!
 COMMENT ---------- Array ------------
 METHOD MetaArray
 new
@@ -1160,10 +1169,6 @@ with: firstElement	| newList |
 	^ newList
 !
 METHOD List
-emptyList
-	self error: 'List is empty'
-!
-METHOD List
 add: anElement
 	elements <- Link value: anElement next: elements.
 	^ anElement
@@ -1226,13 +1231,13 @@ isEmpty
 METHOD List
 removeFirst
 	elements isNil
-		ifTrue: [ self error: 'empty list']
+		ifTrue: [ self emptyCollection ]
 		ifFalse: [ elements <- elements next ]
 !
 METHOD List
 remove: anElement
 	self remove: anElement
-		ifAbsent: [ self emptyList ]
+		ifAbsent: [ self emptyCollection ]
 !
 METHOD List
 reverse | newList |
@@ -1836,7 +1841,7 @@ reverseDo: aBlock
 !
 METHOD Tree
 removeFirst
-	root isNIl ifTrue: [ ^self error: 'empty tree' ].
+	root isNIl ifTrue: [ self emptyCollection ].
 	root <- root removeFirst
 !
 METHOD Tree
@@ -1849,7 +1854,7 @@ METHOD Tree
 first
 	root notNil
 		ifTrue: [ ^root first ]
-		ifFalse: [ self error: 'empty tree' ]
+		ifFalse: [ self emptyCollection ]
 !
 METHOD Tree
 isEmpty

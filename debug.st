@@ -77,8 +77,9 @@ setDebug: sel | meth cl dict |
 		dict <- cl methods.
 		meth <- dict at: sel ifAbsent: [ cl <- cl superclass. nil].
 		cl isNil ifTrue: [
-			self error: ('Undefined method ' + sel printString +
-				' for class ' + self printString)
+			('Undefined method ' + sel printString +
+				' for class ' + self printString) printNl.
+			^ nil
 		]
 	].
 
@@ -350,66 +351,89 @@ examine: args | ctx meth |
 	]
 !
 !Debug
-setBreak: args | s cl clname meth methname i rec lineNum inClass |
-	" Set the listed breakpoints "
-	args do: [:arg|
-		" Parse <class>:<method> "
-		s <- arg break: '/'.
-		(s size < 2) ifTrue: [
-			'Format is <class>/<method>' printNl
-		] ifFalse: [
-
-		" Look up in instance methods unless it's =<class>,
-		  in which case trim the '=' and look up in class
-		  methods."
-		clname <- s at: 1.
-		((clname at: 1) = $=) ifTrue: [
-			inClass <- true.
-			clname <- clname from: 2 to: clname size
-		] ifFalse: [
-			inClass <- false
-		].
-		clname <- clname asSymbol.
-		methname <- (s at: 2) asSymbol.
-
-		" TBD: break at line # "
-		(s size > 2) ifTrue: [
-			lineNum <- (s at: 3) asNumber.
-			lineNum isNil ifTrue: [
-				'Bad line #, defaulting to 1' printNl.
-				lineNum <- 1
-			]
-		] ifFalse: [
-			lineNum <- 1
-		].
-
-		" Find class "
-		cl <- Smalltalk at: clname ifAbsent: [
-			('Unknown class: ' + clname) printNl.
+setBreak: args | s cl clname meth methname i rec lineNum inClass arg loc |
+	" Map straight line # to current class/method "
+	arg <- args at: 1.
+	((arg at: 1) isDigit) ifTrue: [
+		lineNum <- arg asNumber.
+		lineNum isNil ifTrue: [
+			'Bad line #' print. arg printNl.
 			^ nil
 		].
+		meth <- proc context method.
+		arg <- (meth forClass printString) + '/' +
+			(meth name printString) + '/' +
+			lineNum printString
+	].
 
-		" Convert to metaclass if needed "
-		inClass ifTrue: [
-			cl <- cl class
-		].
+	" Parse <class>:<method> "
+	s <- arg break: '/'.
+	(s size < 2) ifTrue: [
+		'Format is <class>/<method>' printNl.
+		^ nil
+	].
 
-		" Now get method, in its debuggable format "
-		meth <- cl setDebug: methname.
+	" Look up in instance methods unless it's Meta<class>,
+	  in which case trim the 'Meta' and look up in class
+	  methods."
+	clname <- s at: 1.
+	((clname from: 1 to: 4) = 'Meta') ifTrue: [
+		inClass <- true.
+		clname <- clname from: 5 to: clname size
+	] ifFalse: [
+		inClass <- false
+	].
+	clname <- clname asSymbol.
+	methname <- (s at: 2) asSymbol.
 
-		" If it's already set, don't do it again "
-		rec <- Array with: meth with: lineNum.
-		i <- bpoints indexOfVal: rec.
-		i notNil ifTrue: [
-			'Already set as breakpoint ' print.
-			i printNl
-		] ifFalse: [
-			" Set & record the breakpoint "
-			meth setBreak: 0.
-			bpoints <- bpoints with: rec
+	" Parse line number "
+	(s size > 2) ifTrue: [
+		lineNum <- (s at: 3) asNumber.
+		lineNum isNil ifTrue: [
+			'Bad line #' print. (s at: 3) printNl.
+			^ nil
 		]
-		]
-	]
+	] ifFalse: [
+		lineNum <- 1
+	].
+
+	" Find class "
+	cl <- Smalltalk at: clname ifAbsent: [
+		('Unknown class: ' + clname printString) printNl.
+		^ nil
+	].
+
+	" Convert to metaclass if needed "
+	inClass ifTrue: [
+		cl <- cl class
+	].
+
+	" Now get method, in its debuggable format "
+	meth <- cl setDebug: methname.
+	meth isNil ifTrue: [
+		('Unknown method: ' + methname printString) printNl.
+		^ nil
+	].
+
+	" If it's already set, don't do it again "
+	rec <- Array with: meth with: lineNum.
+	i <- bpoints indexOfVal: rec.
+	i notNil ifTrue: [
+		'Already set as breakpoint ' print.
+		i printNl.
+		^ nil
+	].
+
+	" See if we can turn line # into a code location "
+	loc <- meth codeLoc: lineNum.
+	loc isNil ifTrue: [
+		'No code for source line ' print. lineNum printNl.
+		^ nil
+	].
+
+	" Set & record the breakpoint "
+	meth setBreak: loc.
+	bpoints <- bpoints with: rec
 !
 !Debug
 clearBreak: args | arg n rec meth lineNum |
@@ -424,7 +448,7 @@ clearBreak: args | arg n rec meth lineNum |
 			rec <- bpoints at: n.
 			meth <- rec at: 1.
 			lineNum <- rec at: 2.
-			meth clearBreak: 0.
+			meth clearBreak: (meth codeLoc: lineNum).
 			bpoints <- bpoints removeIndex: n.
 			n print. ': deleted' printNl
 		]
@@ -606,7 +630,12 @@ run | prev did cmd done line |
 
 		" Stack backtrace "
 		((cmd = 'where') or: [cmd = 'bt']) ifTrue: [
-			proc context backtrace.
+			proc context isNil
+			ifTrue: [
+				'Process has terminated' printNl
+			] ifFalse: [
+				proc context backtrace
+			].
 			did <- true
 		].
 
@@ -748,4 +777,14 @@ breakActive: flag
 		self patchBreak: bp active: flag
 	].
 	active <- flag
+!
+!DebugMethod
+codeLoc: line | set ret |
+	" Get code generated for that line #, or return nil "
+	set <- lines at: line ifAbsent: [ ^ nil ].
+
+	" Return lowest code location "
+	ret <- set anyOne.
+	set do: [:elem| ret <- ret min: elem].
+	^ ret
 !

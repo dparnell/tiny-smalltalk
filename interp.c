@@ -288,7 +288,7 @@ execute(struct object *aProcess, int ticks)
 		aProcess->data[resultInProcess] = returnedValue;
 		context->data[bytePointerInContext] = newInteger(bytePointer);
 		context->data[stackTopInContext] = newInteger(stackTop);
-		return(5);
+		return(ReturnTimeExpired);
 	}
 
 	/* Otherwise decode the instruction */
@@ -467,7 +467,7 @@ execute(struct object *aProcess, int ticks)
 			    aProcess = rootStack[--rootTop];
 			    aProcess->data[contextInProcess] = context;
 			    aProcess->data[resultInProcess] = messageSelector;
-			    return 3;
+			    return(ReturnBadMethod);
 		    }
 		    cache[low].name = messageSelector;
 		    cache[low].class = receiverClass;
@@ -846,7 +846,7 @@ execute(struct object *aProcess, int ticks)
 		    --rootTop; /* pop context */
 		    aProcess = rootStack[--rootTop];
 		    aProcess->data[contextInProcess] = context;
-		    return 2;
+		    return(ReturnError);
 
 	    case 20:	/* byteArray allocation */
 		    low = integerValue(stack->data[--stackTop]);
@@ -1014,7 +1014,7 @@ doReturn2:
 			    aProcess = rootStack[--rootTop];
 			    aProcess->data[contextInProcess] = context;
 			    aProcess->data[resultInProcess] = returnedValue;
-			    return 4;
+			    return(ReturnReturned);
 			    }
 		    arguments = instanceVariables = literals 
 			    = temporaries = 0;
@@ -1080,6 +1080,19 @@ doReturn2:
 				    ->data[parentClassInClass];
 		    arguments = stack->data[--stackTop];
 		    goto checkCache;
+
+		case Breakpoint:
+		    /* Back up on top of the breaking location */
+		    bytePointer -= 1;
+
+		    /* Return to our master process */
+		    aProcess = rootStack[--rootTop];
+		    aProcess->data[contextInProcess] = context;
+		    aProcess->data[resultInProcess] = returnedValue;
+		    context->data[bytePointerInContext] =
+			newInteger(bytePointer);
+		    context->data[stackTopInContext] = newInteger(stackTop);
+		    return(ReturnBreak);
 
 		default:
 		    sysError("invalid doSpecial", low);

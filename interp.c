@@ -1114,6 +1114,13 @@ checkCache:
 		returnedValue = newInteger(low);
 		break;
 
+	    case 40:	/* Truncate Integer -> SmallInt */
+	    	op = stack->data[--stackTop];
+		l = *(long long *)bytePtr(op);
+		x = l;
+		returnedValue = newInteger(x);
+		break;
+
 	    default:
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;

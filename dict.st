@@ -1,3 +1,11 @@
+" dict.st
+
+  An implementation of a Dictionary using Association's instead of
+  the current parallel key/value arrays.  A derived RotorDict
+  is a dictionary which implements iteration, recording the last
+  position scanned so that subsequent iterations continue from
+  that point.
+"
 +Set subclass: #Dict
 +Dict subclass: #RotorDict variables: #(rotor)
 !Dict

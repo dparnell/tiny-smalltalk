@@ -715,7 +715,6 @@ nameTerm(char *name)
 	/* see if super */
 	if (strcmp(name, "super") == 0) {
 		genInstruction(PushArgument, 0);
-		printf("setting super message\n");
 		superMessage = 1;
 		return 1;
 	}

@@ -246,6 +246,10 @@ do_Integer(int op, struct object *low, struct object *high)
 	return(NULL);
 }
 
+/* Code locations are extracted as VAL's */
+#define VAL (bp[bytePointer] | (bp[bytePointer+1] << 8))
+#define VALSIZE 2
+
 int
 execute(struct object *aProcess, int ticks)
 {   
@@ -354,7 +358,8 @@ execute(struct object *aProcess, int ticks)
 		    /* create a block object */
 		    /* low is arg location */
 		    /* next byte is goto value */
-	    high = bp[bytePointer++];
+	    high = VAL;
+	    bytePointer += VALSIZE;
 	    rootStack[rootTop++] = context;
 	    op = rootStack[rootTop++] = 
 	     gcalloc(x = integerValue(method->data[stackSizeInMethod]));
@@ -1037,21 +1042,28 @@ doReturn2:
 		    break;
 
 		case Branch:
-		    bytePointer = bp[bytePointer];
+		    low = VAL;
+		    bytePointer = low;
 		    break;
 
 		case BranchIfTrue:
-		    low = bp[bytePointer++];
+		    low = VAL;
 		    returnedValue = stack->data[--stackTop];
-		    if (returnedValue == trueObject)
+		    if (returnedValue == trueObject) {
 			    bytePointer = low;
+		    } else {
+			    bytePointer += VALSIZE;
+		    }
 		    break;
 
 		case BranchIfFalse:
-		    low = bp[bytePointer++];
+		    low = VAL;
 		    returnedValue = stack->data[--stackTop];
-		    if (returnedValue == falseObject)
+		    if (returnedValue == falseObject) {
 			    bytePointer = low;
+		    } else {
+			    bytePointer += VALSIZE;
+		    }
 		    break;
 
 		case SendToSuper:
@@ -1059,7 +1071,7 @@ doReturn2:
 		    low = bp[bytePointer++];
 		    if (! literals) {
 			    literals = method->data[literalsInMethod];
-			    }
+		    }
 		    messageSelector = literals->data[low];
 		    receiverClass = 
 			    method->data[classInMethod]

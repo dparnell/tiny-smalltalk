@@ -2131,18 +2131,18 @@ openUpdate: name
 	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'rw')
 !
 METHOD MetaFile
-fileIn: name | file |
-	file <- self openRead: name.
-	file opened ifFalse: [ ^ self error: 'cannot open file ' + name ].
+fileIn: nm | file |
+	file <- self openRead: nm.
+	file opened ifFalse: [ ^ self error: 'cannot open file ' + nm ].
 	file fileIn.
 	file close.
 	^ 'file in completed'
 !
 METHOD MetaFile
-image: name | file |
+image: nm | file |
 		" open a file, write the image, then close "
-	file <- self openWrite: name.
-	file opened ifFalse: [ ^ self error: 'cannot open file ' + name ].
+	file <- self openWrite: nm.
+	file opened ifFalse: [ ^ self error: 'cannot open file ' + nm ].
 	file writeImage.
 	file close
 !
@@ -2206,13 +2206,20 @@ readLine	| value  c nl |
 !
 METHOD File
 fileIn		| cmd |
-	[ cmd <- self readChar. cmd notNil ]
-		whileTrue: [
-			cmd = $+
-				ifTrue: [ self readLine doIt printNl ]
-			ifFalse: [ (cmd = $! or: [ cmd = $=])
-				ifTrue: [ self methodCommand: cmd = $! ]
-				ifFalse: [ self readLine "it is a comment" ] ] ].
+	[ cmd <- self readChar. cmd notNil ] whileTrue: [
+		cmd = $+ ifTrue: [
+			self readLine doIt printNl
+		] ifFalse: [
+			(cmd = $! or: [ cmd = $=]) ifTrue: [
+				self methodCommand: cmd = $!
+			] ifFalse: [
+				"it is a comment"
+				(cmd = Char newline) ifFalse: [
+					self readLine
+				]
+			]
+		]
+	]
 !
 METHOD File
 methodCommand: classCmd | name aClass text line |

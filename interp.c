@@ -193,27 +193,15 @@ flushCache(void)
 	}
 }
 
-int execute (struct object * aProcess)
+int
+execute(struct object *aProcess)
 {   
-    register int low;
-    register int high;
-    register struct object * context;
-    struct object * method;
-    struct object * arguments;
-    struct object * temporaries;
-    struct object * instanceVariables;
-    struct object * literals;
-    register struct object * stack;
-
-    struct object * returnedValue = nilObject;
-    struct object * messageSelector;
-    struct object * receiverClass;
-
-    unsigned char * bp;
-    int stackTop;
-    int bytePointer;
-
-    int lastPrimitiveNumber;
+    int low, high, stackTop, bytePointer, lastPrimitiveNumber;
+    struct object *context, *method, *arguments, *temporaries,
+	    *instanceVariables, *literals, *stack,
+	    *returnedValue = nilObject, *messageSelector,
+	    *receiverClass;
+    unsigned char *bp;
 
     /* push process, so as to save it */
     rootStack[rootTop++] = aProcess;
@@ -333,20 +321,23 @@ int execute (struct object * aProcess)
 
             case AssignInstance:
 		DBG1("AssignInstance", low);
-		if (! arguments) 
+		if (!arguments)  {
 			arguments = context->data[argumentsInContext];
-		if (! instanceVariables)
+		}
+		if (!instanceVariables) {
 			instanceVariables = 
 				arguments->data[receiverInArguments];
 				/* don't pop stack, leave result there */
+		}
 		instanceVariables->data[low] = stack->data[stackTop-1];
-				/* if changing a static area, need
-					to add to roots */
-		if ((! isDynamicMemory(instanceVariables)) 
-			&& isDynamicMemory(stack->data[stackTop-1]))
-			{
+
+		/*
+		 * If changing a static area, need to add to roots
+		 */
+		if (!isDynamicMemory(instanceVariables) 
+				&& isDynamicMemory(stack->data[stackTop-1])) {
 			addStaticRoot(&instanceVariables->data[low]);
-			}
+		}
                 break;
 
             case AssignTemporary:

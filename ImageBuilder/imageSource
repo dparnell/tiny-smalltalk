@@ -788,6 +788,12 @@ printString | count res |
 	].
 	^ res + ')'
 !
+METHOD Collection
+occurencesOf: obj | count |
+	count <- 0.
+	self do: [:o| (o = obj) ifTrue: [ count <- count + 1]].
+	^ count
+!
 COMMENT ---------- Array ------------
 METHOD MetaArray
 new
@@ -1102,36 +1108,6 @@ asNumber | val |
 		val <- (val * 10) + (c value - 48)
 	].
 	^val
-!
-METHOD String
-occurencesOf: c | count |
-	count <- 0.
-	self do: [:ch| (ch = c) ifTrue: [ count <- count + 1]].
-	^ count
-!
-METHOD String
-asLines | c ret slot idx base top nl |
-	" Size the array of lines which will result "
-	nl <- Char newline.
-	ret <- Array new: (self occurencesOf: nl) + 1.
-
-	" Walk the elements, assembling lines "
-	slot <- base <- idx <- 1.
-	top <- self size.
-	[idx < top] whileTrue: [
-		c <- self at: idx.
-		(c = nl) ifTrue: [
-			ret at: slot put: (self from: base to: idx - 1).
-			slot <- slot + 1.
-			base <- idx + 1
-		].
-		idx <- idx + 1
-	].
-	(idx > top) ifTrue: [ idx <- top ].
-	(idx > base) ifTrue: [
-		ret at: slot put: (self from: base to: idx)
-	].
-	^ ret
 !
 COMMENT --------- List -----------
 METHOD MetaList

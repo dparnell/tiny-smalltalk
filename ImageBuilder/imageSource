@@ -51,8 +51,8 @@ CLASS MetaString    Class         MetaArray
 CLASS String        MetaString    Array
 CLASS MetaNumber   Class         MetaObject
 CLASS Number       MetaNumber   Magnitude
-COMMENT CLASS MetaInteger   Class         MetaObject
-COMMENT CLASS Integer       MetaInteger   Number            low high
+CLASS MetaInteger   Class         MetaObject
+CLASS Integer       MetaInteger   Number            low high
 CLASS MetaSmallInt  Class         MetaNumber
 CLASS SmallInt      MetaSmallInt  Number
 CLASS MetaLink      Class         MetaObject
@@ -906,7 +906,7 @@ input	| value c nl |
 !
 METHOD String
 edit
-	<35 self>
+	<105 self>
 !
 METHOD String
 break: separators  | words word |
@@ -1164,6 +1164,10 @@ asSmallInt
 	^self
 !
 METHOD SmallInt
+asInteger
+	^Integer new: self
+!
+METHOD SmallInt
 highOrder
 	^ 0
 !
@@ -1217,6 +1221,75 @@ METHOD SmallInt
 = arg
 	<14 self arg>
 	(arg isMemberOf: SmallInt) ifFalse: [^self = arg asSmallInt].
+	self primitiveFailed
+!
+COMMENT ---------- Integer ------------
+METHOD MetaInteger
+new: low | n |
+	n <- super new.
+	self in: n at: 1 put: low.
+	self in: n at: 2 put: 0.
+	^n
+!
+METHOD Integer
+asInteger
+	^self
+!
+METHOD Integer
+asSmallInt
+	(high > 0) ifTrue: [ self overFlow ].
+	^low
+!
+METHOD Integer
+highOrder
+	^ high
+!
+METHOD Integer
+lowOrder
+	^ low
+!
+METHOD Integer
+quo: arg
+	<25 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self quo: arg asInteger].
+	(0 = arg) ifTrue: [^ self error: 'division by zero'].
+	self primitiveFailed
+!
+METHOD Integer
+rem: arg
+	<26 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self rem: arg asInteger].
+	(0 = arg) ifTrue: [^ self error: 'division by zero'].
+	self primitiveFailed
+!
+METHOD Integer
++ arg
+	<27 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self + arg asInteger].
+	self primitiveFailed
+!
+METHOD Integer
+* arg
+	<28 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self * arg asInteger].
+	self primitiveFailed
+!
+METHOD Integer
+- arg
+	<29 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self - arg asInteger].
+	self primitiveFailed
+!
+METHOD Integer
+< arg
+	<30 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self < arg asInteger].
+	self primitiveFailed
+!
+METHOD Integer
+= arg
+	<31 self arg>
+	(arg isMemberOf: Integer) ifFalse: [^self = arg asInteger].
 	self primitiveFailed
 !
 COMMENT ---------- Nodes ------------
@@ -1465,7 +1538,7 @@ isEmpty
 COMMENT --------------file methods-----------------
 METHOD MetaFile
 doOpen: name mode: mode
-	<30 name mode>
+	<100 name mode>
 !
 METHOD MetaFile
 openRead: name
@@ -1501,23 +1574,23 @@ METHOD File
 close
 		" close file, return file descriptor "
 	fileID notNil
-		ifTrue: [ <33 fileID> ]
+		ifTrue: [ <103 fileID> ]
 !
 METHOD File
 writeImage
 		" save the current image in a file "
 	fileID notNil
-		ifTrue: [ <34 fileID> ]
+		ifTrue: [ <104 fileID> ]
 !
 METHOD File
 writeCharValue: n
 	^ fileID isNil
 		ifTrue: [ self error: 'cannot write to unopned file']
-		ifFalse: [ <32 fileID n> ]
+		ifFalse: [ <102 fileID n> ]
 !
 METHOD File
 doRead
-	<31 fileID>
+	<101 fileID>
 !
 METHOD File
 readChar	| c |

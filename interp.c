@@ -290,6 +290,7 @@ execute(struct object *aProcess, int ticks)
 		aProcess = rootStack[--rootTop];
 		aProcess->data[contextInProcess] = context;
 		aProcess->data[resultInProcess] = returnedValue;
+		context->data[bytePointerInContext] = newInteger(bytePointer);
 		return(5);
 	}
 

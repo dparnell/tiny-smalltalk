@@ -76,15 +76,16 @@ debug: n | meth s |
 	Debug debug: self method: meth
 !
 !Debug
-runIt | ret |
+runIt: count | ret |
 	" Execute for one instruction.  Return whether or not the return
 	 was 'normal' (i.e., VM stopped due to single stepping, not
 	 something else "
-	ret <- proc doExecute: 2.
+	ret <- proc doExecute: count+1.
 	(ret = 5) ifTrue: [ ^ true ].
-	(ret = 4) ifTrue: [ 'Method returned' printNl ].
-	(ret = 3) ifTrue: [ 'Message not understood' printNl ].
 	(ret = 2) ifTrue: [ 'Error trap' printNl ].
+	(ret = 3) ifTrue: [ 'Message not understood' printNl ].
+	(ret = 4) ifTrue: [ 'Method returned' printNl ].
+	(ret = 6) ifTrue: [ 'Breakpoint' printNl ].
 	^ false
 !
 !Context
@@ -151,23 +152,29 @@ proc: p
 	proc <- p
 !
 !Debug
-atCall | meth ctx low high |
+atCall | ret meth ctx pc low high |
 	" Get the next instruction "
 	ctx <- proc context.
 	meth <- ctx method.
-	high <- meth byteCodes at: (ctx bytePointer + 1).
+	pc <- ctx bytePointer.
+	high <- meth byteCodes at: (pc + 1).
+	pc <- pc + 1.
 	low <- high rem: 16.
 	high <- high quo: 16.
 	(high = 0) ifTrue: [
 		high <- low.
-		low <- meth byteCodes at: (ctx bytePointer + 2)
+		low <- meth byteCodes at: (pc + 1)
+		pc <- pc + 1.
 	].
 
 	" Return nil if it isn't a SendMessage "
 	(high = 9) ifFalse: [ ^ nil ].
 
-	" Otherwise return the selector "
-	^ meth literals at: (low + 1)
+	" Otherwise return the selector and return address "
+	ret <- Array new: 2.
+	ret at: 1 put: (meth literals at: (low + 1)).
+	ret at: 2 put: pc.
+	^ ret
 !
 !Debug
 stepCall: sel | ctx stack sp args target meth |
@@ -178,7 +185,7 @@ stepCall: sel | ctx stack sp args target meth |
 	target <- args at: 1.
 	meth <- target class setDebug: sel.
 	meth isNil ifTrue: [ ^ true ].
-	(self runIt) ifFalse: [
+	(self runIt: 1) ifFalse: [
 		'Execution done in ' print.
 		meth name print.
 		' of class ' print.
@@ -188,25 +195,75 @@ stepCall: sel | ctx stack sp args target meth |
 	^ false
 !
 !Debug
-doStep | done srcl sel |
-	done <- false.
+setBreak: pc | code ret |
+	" Patch in a DoSpecial operation 12 (breakpoint) "
+	" Return a record of how to undo this. "
+	code <- proc context method byteCodes.
+	ret <- Array new: 3.
+	ret at: 1 put: code.
+	ret at: 2 put: pc.
+	ret at: 3 put: (code at: (pc + 1)).
+	code at: (pc + 1) put: ((15*16) + 12).
+	^ ret
+!
+!Debug
+clearBreak: undo | code pc old |
+	" Restore the previous code value "
+	code <- undo at: 1.
+	pc <- undo at: 2.
+	old <- undo at: 3.
+	code at: (pc + 1) put: old
+!
+!Debug
+overCall: pc | ctx old res |
+	" Set a breakpoint at the instruction beyond the SendMessage "
+	ctx <- proc context.
+	old <- self setBreak: pc.
+
+	" Now let it run until it hits the breakpoint, and clear
+	  the breakpoint. "
+	res <- self runIt: -1.
+	self clearBreak: old.
+	res ifTrue: [
+		" We shouldn't time out... "
+		'Unexpected run completion' printNl.
+		^ true
+	].
+
+	" Should be stopped at the expected location "
+	((proc context = ctx) and:
+			[ ctx bytePointer = pc ]) ifTrue: [
+		^ false
+	].
+
+	" If not, we're done "
+	'Execution aborted' printNl.
+	^ true
+!
+!Debug
+doStep: intoCalls | srcl ret |
 	srcl <- self srcLine.
-	[done not and: [srcl = self srcLine]]
-	 whileTrue: [
+	[srcl = self srcLine] whileTrue: [
 		" If dropping into a new method, deal with it "
-		sel <- self atCall.
-		sel notNil ifTrue: [
-			^ self stepCall: sel
+		ret <- self atCall.
+		ret notNil ifTrue: [
+			" Stepping into the call "
+			intoCalls ifTrue: [
+				^ self stepCall: (ret at: 1)
+			].
+
+			" Stepping over call "
+			^ self overCall: (ret at: 2)
 		].
 
 		" Otherwise run a single VM operation "
-		(self runIt) ifFalse: [
+		(self runIt: 1) ifFalse: [
 			'Execution done at line ' print.
 			srcl printString printNl.
-			done <- true
+			^ true
 		]
 	].
-	^ done
+	^ false
 !
 !Debug
 run | prev did cmd done |
@@ -228,7 +285,7 @@ run | prev did cmd done |
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
 			 ifFalse: [
-				(self runIt) ifFalse: [
+				(self runIt: 1) ifFalse: [
 					done <- true
 				]
 			].
@@ -240,7 +297,17 @@ run | prev did cmd done |
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
 			 ifFalse: [
-				done <- self doStep.
+				done <- self doStep: true.
+				did <- true
+			 ]
+		].
+
+		" Step a source line, stepping over message sends "
+		((cmd = 'next') or: [cmd = 'n']) ifTrue: [
+			done
+			 ifTrue: [ 'Not runnable' printNl ]
+			 ifFalse: [
+				done <- self doStep: false.
 				did <- true
 			 ]
 		].

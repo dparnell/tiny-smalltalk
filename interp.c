@@ -466,6 +466,7 @@ execute(struct object *aProcess, int ticks)
 		    if (! method) {
 			    aProcess = rootStack[--rootTop];
 			    aProcess->data[contextInProcess] = context;
+			    aProcess->data[statusInProcess] = arguments;
 			    aProcess->data[resultInProcess] = messageSelector;
 			    return(ReturnBadMethod);
 		    }

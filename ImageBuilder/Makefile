@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -I..
+CFLAGS=-Wall -g -I..
 
 image: imageBuilder imageSource
 	imageBuilder <imageSource

@@ -29,14 +29,14 @@ CLASS MetaBlock     Class         MetaContext
 CLASS Block         MetaBlock     Context argumentLocation creatingContext oldBytePointer
 CLASS MetaMethod    Class         MetaObject
 CLASS Method        MetaMethod    Object name byteCodes literals stackSize temporarySize class text
-CLASS MetaMagnatude Class         MetaObject
-CLASS Magnatude     MetaMagnatude Object
-CLASS MetaSymbol    Class         MetaMagnatude     symbols
-CLASS Symbol        MetaSymbol    Magnatude
-CLASS MetaChar      Class         MetaMagnatude
-CLASS Char          MetaChar      Magnatude          value
-CLASS MetaCollection Class        MetaMagnatude
-CLASS Collection    MetaCollection Magnatude
+CLASS MetaMagnitude Class         MetaObject
+CLASS Magnitude     MetaMagnitude Object
+CLASS MetaSymbol    Class         MetaMagnitude     symbols
+CLASS Symbol        MetaSymbol    Magnitude
+CLASS MetaChar      Class         MetaMagnitude
+CLASS Char          MetaChar      Magnitude          value
+CLASS MetaCollection Class        MetaMagnitude
+CLASS Collection    MetaCollection Magnitude
 CLASS MetaList      Class         MetaCollection
 CLASS List          MetaList      Collection         elements
 CLASS MetaDictionary Class         MetaCollection
@@ -50,7 +50,7 @@ CLASS ByteArray     MetaByteArray Array
 CLASS MetaString    Class         MetaArray
 CLASS String        MetaString    Array
 CLASS MetaNumeric   Class         MetaObject
-CLASS Numeric       MetaNumeric   Magnatude
+CLASS Numeric       MetaNumeric   Magnitude
 CLASS MetaInteger   Class         MetaObject
 CLASS Integer       MetaInteger   Numeric
 CLASS MetaSmallInt  Class         MetaInteger
@@ -463,28 +463,28 @@ backtrace
 	previousContext notNil 
 		ifTrue: [ previousContext backtrace ]
 !
-COMMENT -----------Magnatude--------------
-METHOD Magnatude
+COMMENT -----------Magnitude--------------
+METHOD Magnitude
 <= arg
 	^ self < arg or: [ self = arg ]
 !
-METHOD Magnatude
+METHOD Magnitude
 > arg
 	^ arg < self
 !
-METHOD Magnatude
+METHOD Magnitude
 >= arg
 	^ self > arg or: [ self = arg ]
 !
-METHOD Magnatude
+METHOD Magnitude
 min: arg
 	^ self < arg ifTrue: [ self ] ifFalse: [ arg ]
 !
-METHOD Magnatude
+METHOD Magnitude
 max: arg
 	^ self < arg ifTrue: [ arg ] ifFalse: [ self ]
 !
-METHOD Magnatude
+METHOD Magnitude
 between: low and: high
 	^ low <= self and: [ self <= high ]
 !

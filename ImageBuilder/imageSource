@@ -69,19 +69,31 @@ CLASS MetaTree		Class		MetaObject
 CLASS Tree		MetaTree	Collection	root
 COMMENT ---------- Classes having to do with parsing ------------
 CLASS Parser Class Object text index tokenType token argNames tempNames instNames maxTemps errBlock lineNum
-CLASS ParserNode Class Object
+CLASS MetaParserNode Class MetaObject
+CLASS ParserNode MetaParserNode Object lineNum
 CLASS Encoder Class Object name byteCodes index literals stackSize maxStack
-CLASS BodyNode Class ParserNode statements
-CLASS ReturnNode Class ParserNode expression
-CLASS AssignNode Class ParserNode target expression
-CLASS LiteralNode Class ParserNode value
-CLASS ArgumentNode Class ParserNode position
-CLASS TemporaryNode Class ParserNode position
-CLASS InstNode Class ParserNode position
-CLASS PrimitiveNode Class ParserNode number arguments
-CLASS BlockNode Class ParserNode statements temporaryLocation
-CLASS CascadeNode Class ParserNode head list
-CLASS MessageNode Class ParserNode receiver name arguments
+CLASS MetaBodyNode Class MetaParserNode
+CLASS BodyNode MetaBodyNode ParserNode statements
+CLASS MetaReturnNode Class MetaParserNode
+CLASS ReturnNode MetaReturnNode ParserNode expression
+CLASS MetaAssignNode Class MetaParserNode
+CLASS AssignNode MetaAssignNode ParserNode target expression
+CLASS MetaLiteralNode Class MetaParserNode
+CLASS LiteralNode MetaLiteralNode ParserNode value
+CLASS MetaArgumentNode Class MetaParserNode
+CLASS ArgumentNode MetaArgumentNode ParserNode position
+CLASS MetaTemporaryNode Class MetaParserNode
+CLASS TemporaryNode MetaTemporaryNode ParserNode position
+CLASS MetaInstNode Class MetaParserNode
+CLASS InstNode MetaInstNode ParserNode position
+CLASS MetaPrimitiveNode Class MetaParserNode
+CLASS PrimitiveNode MetaPrimitiveNode ParserNode number arguments
+CLASS MetaBlockNode Class MetaParserNode
+CLASS BlockNode MetaBlockNode ParserNode statements temporaryLocation
+CLASS MetaCascadeNode Class MetaParserNode
+CLASS CascadeNode MetaCascadeNode ParserNode head list
+CLASS MetaMessageNode Class MetaParserNode
+CLASS MessageNode MetaMessageNode ParserNode receiver name arguments
 COMMENT ---------- method bodies ------------
 COMMENT -----------Object-------------------
 METHOD MetaObject
@@ -1819,10 +1831,6 @@ error: aString
 	errBlock value
 !
 METHOD Parser
-lineNum
-	^ lineNum
-!
-METHOD Parser
 currentChar
 	^ text at: index ifAbsent: [ Char eof ]
 !
@@ -1959,7 +1967,7 @@ addTempName: name
 !
 METHOD Parser
 readBody
-	^ BodyNode new statements: self readStatementList
+	^ (BodyNode at: lineNum) statements: self readStatementList
 !
 METHOD Parser
 readStatementList   | list |
@@ -1975,7 +1983,8 @@ METHOD Parser
 readStatement
 	tokenType = $^
 		ifTrue: [ self nextLex.
-			^ ReturnNode new expression: self readExpression ].
+			^ (ReturnNode at: lineNum)
+				expression: self readExpression ].
 	^ self readExpression
 !
 METHOD Parser
@@ -1986,7 +1995,8 @@ readExpression   | node |
 		ifTrue: [ node assignable
 				ifFalse: [ self error: 'illegal assignment'].
 			self nextLex.
-			^ AssignNode new target: node expression: self readExpression ].
+			^ (AssignNode at: lineNum) target:
+				node expression: self readExpression ].
 	^ self readCascade: node
 !
 METHOD Parser
@@ -2008,23 +2018,24 @@ readTerm   | node |
 	self tokenIsName
 		ifTrue: [ node <- self nameNode: token asSymbol.
 			self nextLex. ^ node ].
-	^ LiteralNode new value: self readLiteral
+	^ (LiteralNode at: lineNum) value: self readLiteral
 !
 METHOD Parser
 nameNode: name
 	" make a new name node "
 	name == #super
-		ifTrue: [ ^ ArgumentNode new position: 0 ].
+		ifTrue: [ ^ (ArgumentNode at: lineNum) position: 0 ].
 	(1 to: tempNames size) do: [:i |
 		(name == (tempNames at: i))
-			ifTrue: [ ^ TemporaryNode new position: i ] ].
+			ifTrue: [ ^ (TemporaryNode at: lineNum)
+				position: i ] ].
 	(1 to: argNames size) do: [:i |
 		(name == (argNames at: i))
-			ifTrue: [ ^ ArgumentNode new position: i ] ].
+			ifTrue: [ ^ (ArgumentNode at: lineNum) position: i ] ].
 	(1 to: instNames size) do: [:i |
 		(name == (instNames at: i))
-			ifTrue: [ ^ InstNode new position: i ] ].
-	^ LiteralNode new;
+			ifTrue: [ ^ (InstNode at: lineNum) position: i ] ].
+	^ (LiteralNode at: lineNum);
 		value: (globals at: name
 			ifAbsent: [ ^ self error:
 				'unrecognized name: ' + name printString ])
@@ -2098,7 +2109,7 @@ readPrimitive  | num args |
 	[ tokenType ~= $> ]
 		whileTrue: [ args add: self readTerm ].
 	self nextLex.
-	^ PrimitiveNode new number: num arguments: args
+	^ (PrimitiveNode at: lineNum) number: num arguments: args
 !
 METHOD Parser
 readBlock    | stmts saveTemps |
@@ -2110,7 +2121,7 @@ readBlock    | stmts saveTemps |
 	tempNames <- saveTemps.
 	tokenType = $]
 		ifTrue: [ self nextLex.
-			^ BlockNode new statements: stmts
+			^ (BlockNode at: lineNum) statements: stmts
 				temporaryLocation: saveTemps size ]
 		ifFalse: [ self error: 'unterminated block']
 !
@@ -2132,7 +2143,7 @@ METHOD Parser
 readCascade: base   | node list |
 	node <- self keywordContinuation: base.
 	tokenType = $;
-		ifTrue: [ node <- CascadeNode new head: node.
+		ifTrue: [ node <- (CascadeNode at: lineNum) head: node.
 			list <- List new.
 			[ tokenType = $; ]
 				whileTrue: [ self nextLex.
@@ -2152,14 +2163,15 @@ keywordContinuation: base  | receiver name args |
 		whileTrue: [ name <- name + token. self nextLex.
 			args add:
 				(self binaryContinuation: self readTerm) ].
-	^ MessageNode new receiver: receiver name: name asSymbol arguments: args
+	^ (MessageNode at: lineNum) receiver:
+		receiver name: name asSymbol arguments: args
 !
 METHOD Parser
 binaryContinuation: base | receiver name |
 	receiver <- self unaryContinuation: base.
 	[ self tokenIsBinary]
 		whileTrue: [ name <- token asSymbol. self nextLex.
-			receiver <- MessageNode new
+			receiver <- (MessageNode at: lineNum)
 				receiver: receiver name: name arguments:
 					(List with:
 						(self unaryContinuation: self readTerm)) ].
@@ -2169,11 +2181,21 @@ METHOD Parser
 unaryContinuation: base | receiver |
 	receiver <- base.
 	[ self tokenIsName ]
-		whileTrue: [ receiver <- MessageNode new
+		whileTrue: [ receiver <- (MessageNode at: lineNum)
 				receiver: receiver name: token asSymbol
 					arguments: (List new).
 				self nextLex ].
 	^ receiver
+!
+METHOD MetaParserNode
+new
+	self error: 'Must use at: for creation'
+!
+METHOD MetaParserNode
+at: l | ret |
+	ret <- super new.
+	self in: ret at: 1 put: l.
+	^ ret
 !
 METHOD ParserNode
 isSuper
@@ -2187,12 +2209,17 @@ METHOD ParserNode
 assignable
 	^ false
 !
+METHOD ParserNode
+compile: encoder
+	encoder lineNum: lineNum
+!
 METHOD BodyNode
 statements: s
 	statements <- s
 !
 METHOD BodyNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	statements reverseDo:
 		[ :stmt | stmt compile: encoder block: inBlock.
 			encoder genHigh: 15 low: 5 " pop "].
@@ -2204,6 +2231,7 @@ expression: e
 !
 METHOD ReturnNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	expression compile: encoder block: inBlock.
 	inBlock
 		ifTrue: [ encoder genHigh: 15 low: 3 " block return " ]
@@ -2216,6 +2244,7 @@ target: t expression: e
 !
 METHOD AssignNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	expression compile: encoder block: inBlock.
 	target assign: encoder
 !
@@ -2225,6 +2254,7 @@ value: v
 !
 METHOD LiteralNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	value == nil ifTrue: [ ^ encoder genHigh: 5 low: 10 ].
 	value == true ifTrue: [ ^ encoder genHigh: 5 low: 11 ].
 	value == false ifTrue: [ ^ encoder genHigh: 5 low: 12 ].
@@ -2243,6 +2273,7 @@ isSuper
 !
 METHOD ArgumentNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	position = 0
 		ifTrue: [ encoder genHigh: 2 low: 0 ]
 		ifFalse: [ encoder genHigh: 2 low: position - 1 ]
@@ -2253,6 +2284,7 @@ position: p
 !
 METHOD TemporaryNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	encoder genHigh: 3 low: position - 1
 !
 METHOD TemporaryNode
@@ -2269,6 +2301,7 @@ position: p
 !
 METHOD InstNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	encoder genHigh: 1 low: position - 1
 !
 METHOD InstNode
@@ -2286,6 +2319,7 @@ number: n arguments: a
 !
 METHOD PrimitiveNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	arguments reverseDo: [ :a | a compile: encoder block: inBlock ].
 	encoder genHigh: 13 low: arguments size.
 	encoder genCode: number
@@ -2308,6 +2342,7 @@ isBlock
 !
 METHOD BlockNode
 compile: encoder block: inBlock | patchLocation |
+	super compile: encoder.
 	encoder genHigh: 12 low: temporaryLocation.
 	patchLocation <- encoder genCode: 0.
 	self compileInLine: encoder block: true.
@@ -2324,6 +2359,7 @@ list: l
 !
 METHOD CascadeNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	head compile: encoder block: inBlock.
 	list reverseDo: [ :stmt |
 		encoder genHigh: 15 low: 4. " duplicate "
@@ -2338,6 +2374,7 @@ receiver: r name: n arguments: a
 !
 METHOD MessageNode
 compile: encoder block: inBlock
+	super compile: encoder.
 	receiver isNil
 		ifTrue: [ ^ self cascade: encoder block: inBlock ].
 	((receiver isBlock and: [ self argumentsAreBlock ])
@@ -2417,6 +2454,7 @@ optimizeWhile: encoder block: inBlock | start save |
 !
 METHOD MessageNode
 compile: encoder test: t constant: c block: inBlock | save ssave |
+	super compile: encoder.
 	encoder genHigh: 15 low: t.  " branch test "
 	save <- encoder genCode: 0.
 	arguments first compileInLine: encoder block: inBlock.
@@ -2449,6 +2487,10 @@ name: n
 !
 METHOD Encoder
 parser: p
+	" Don't care, except in DebugEncoder subclass "
+!
+METHOD Encoder
+lineNum: l
 	" Don't care, except in DebugEncoder subclass "
 !
 METHOD Encoder

@@ -37,6 +37,7 @@ CLASS ByteArray     Array
 CLASS MetaString    Class         MetaArray
 CLASS String        Array
 CLASS Set	    Collection		members growth
+CLASS IdentitySet   Set
 CLASS Number        Magnitude
 CLASS Integer       Number
 CLASS SmallInt      Number
@@ -1446,13 +1447,21 @@ grow | bigger old oldsize |
 	old do: [:elem| self add: elem]
 !
 METHOD Set
+compare: t and: e
+	^ t = e
+!
+METHOD IdentitySet
+compare: t and: e
+	^ t == e
+!
+METHOD Set
 location: elem | pos start t |
 	start <- pos <- (elem hash rem: members size) + 1.
 	[ true ] whileTrue: [
 		" Return this position if we match, or have reached
 		  a nil slot. "
 		t <- members at: pos.
-		((t == elem) or: [t isNil]) ifTrue: [
+		((t isNil) or: [self compare: t and: elem]) ifTrue: [
 			^ pos
 		].
 
@@ -1503,8 +1512,8 @@ rehash: start | pos elem |
 METHOD Set
 remove: elem ifAbsent: aBlock | pos |
 	" If not found, return error "
-	pos <- members location: elem.
-	((pos isNil) or: [(members at: pos) ~~ elem]) ifTrue: [
+	pos <- self location: elem.
+	((pos isNil) or: [(members at: pos) isNil]) ifTrue: [
 		aBlock value
 	].
 
@@ -1527,7 +1536,7 @@ do: aBlock
 METHOD Set
 at: value ifAbsent: aBlock | pos |
 	pos <- self location: value.
-	((pos isNil) or: [ (members at: pos) ~~ value ]) ifTrue: [
+	((pos isNil) or: [ (members at: pos) isNil ]) ifTrue: [
 		^ aBlock value
 	].
 	^ value

@@ -5,6 +5,7 @@ image: imageBuilder imageSource
 	imageBuilder <imageSource
 
 imageBuilder: imageBuilder.o
+	rm -f imageBuilder
 	$(CC) -o imageBuilder imageBuilder.o
 
 jconv.class: jconv.java

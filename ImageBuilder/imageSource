@@ -836,6 +836,11 @@ first
 	^self at: 1
 !
 COMMENT ---------- OrderedArray ------------
+METHOD MetaOrderedArray
+new
+	" 0-sized is OK, since we add slots as we add things in order "
+	^self new: 0
+!
 METHOD OrderedArray
 add: value
 	^ self insert: value at: (self location: value)

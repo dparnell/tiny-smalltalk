@@ -1346,7 +1346,8 @@ METHOD Tree
 add: anElement
 	root isNil
 		ifTrue: [ root <- Node new: anElement ]
-		ifFalse: [ root add: anElement ]
+		ifFalse: [ root add: anElement ].
+	^anElement
 !
 METHOD Tree
 addAll: aCollection

@@ -270,6 +270,7 @@ primitive(int primitiveNumber, struct object *args, int *failed)
 			break;
 		}
 		fclose(fp);
+		filePointers[i] = NULL;
 		break;
 
 	case 104:	/* file out image */

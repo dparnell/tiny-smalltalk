@@ -387,7 +387,7 @@ objectRead(FILE * fp)
 			{
 			int val;
 
-			fread(&val, sizeof(val), 1, fp);
+			(void)fread(&val, sizeof(val), 1, fp);
 			newObj = newInteger(val);
 			}
 			break;
@@ -474,8 +474,11 @@ objectWrite(FILE *fp, struct object * obj)
 	}
 
 	if (IS_SMALLINT(obj)) { /* SmallInt */
+		int val;
+
 		writeWord(fp, 2);
-		writeWord(fp, integerValue(obj));
+		val = integerValue(obj);
+		(void)fwrite(&val, sizeof(val), 1, fp);
 		return;
 	}
 
@@ -536,6 +539,7 @@ fileOut(FILE * fp)
 	objectWrite(fp, falseObject);
 	objectWrite(fp, globalsObject);
 	objectWrite(fp, SmallIntClass);
+	objectWrite(fp, IntegerClass);
 	objectWrite(fp, ArrayClass);
 	objectWrite(fp, BlockClass);
 	objectWrite(fp, ContextClass);

@@ -43,16 +43,15 @@ struct byteObject {
 # define bytePtr(x) (((struct byteObject *) x)->bytes)
 
 /*
-	integer objects are used to represent short integers
-*/
-
-struct integerObject {
-	int size;
-	struct object * class;
-	unsigned int value;
-	};
-
-# define integerValue(x) (((struct integerObject *) x)->value)
+ * SmallInt objects are used to represent short integers.  They are
+ * encoded as 31 bits, signed, with the low bit set to 1.  This
+ * distinguishes them from all other objects, which are longword
+ * aligned and are proper C memory pointers.
+ */
+#define IS_SMALLINT(x) ((((int)x) & 0x01) != 0)
+#define CLASS(x) (IS_SMALLINT(x) ? SmallIntClass : ((x)->class))
+#define integerValue(x) (((int)x) >> 1)
+#define newInteger(x) ((struct object *)((((int)x) << 1) | 0x01))
 
 /*
 	memoryBase holds the pointer to the current space,
@@ -82,7 +81,7 @@ extern void addStaticRoot(struct object **);
 	The following are roots for the file out 
 */
 
-extern struct object *nilObject, *smallInts[10], *trueObject,
+extern struct object *nilObject, *trueObject,
 	*falseObject, *SmallIntClass, *ArrayClass, *BlockClass,
 	*ContextClass, *globalsObject, *initialMethod,
 	*binaryMessages[3], *IntegerClass;

@@ -112,19 +112,29 @@ gc_move(struct mobject * ptr)
 		 */
 		for (;;) {
 			/*
+			 * SmallInt's are not proper memory pointers,
+			 * so catch them first.  Their "object pointer"
+			 * value can be used as-is in the new space.
+			 */
+			if (IS_SMALLINT(old_address)) {
+				replacement = old_address;
+				old_address = previous_object;
+				break;
+
+			/*
 			 * If we find a pointer in the current space
 			 * to the new space (other than indirections) then
 			 * something is very wrong
 			 */
-			if ((old_address >= (struct mobject *) memoryBase)
+			} else if ((old_address >=
+			 (struct mobject *) memoryBase)
 			 && (old_address <= (struct mobject *) memoryTop)) {
 				sysError(
 				 "GC invariant failure -- address in new space",
 					(unsigned int)old_address);
-			}
 
 			/* else see if not  in old space */
-			if ((old_address < (struct mobject *) oldBase) ||
+			} else if ((old_address < (struct mobject *) oldBase) ||
 			 (old_address > (struct mobject *) oldTop)) {
 				replacement = old_address;
 				old_address = previous_object;
@@ -278,8 +288,9 @@ struct object *
 staticAllocate(int sz)
 {
 	staticPointer -= sz + 2;
-	if (staticPointer < staticBase)
+	if (staticPointer < staticBase) {
 		sysError("insufficient static memory", 0);
+	}
 	staticPointer->size = sz << 2;
 	return staticPointer;
 }
@@ -339,12 +350,14 @@ readWord(FILE * fp)
 	int i;
 
 	i = fgetc(fp);
-	if (i == EOF)
+	if (i == EOF) {
 		sysError("unexpected end of file reading image file", 0);
-	if (i == 255)
+	}
+	if (i == 255) {
 		return 255 + readWord(fp);
-	else
+	} else {
 		return i;
+	}
 }
 
 static struct object *
@@ -352,7 +365,6 @@ objectRead(FILE * fp)
 {
 	int type, size, i;
 	struct object *newObj = 0;
-	struct integerObject *inewObj;
 	struct byteObject *bnewObj;
 
 	type = readWord(fp);
@@ -373,11 +385,7 @@ objectRead(FILE * fp)
 
 		case 2: /* integer */
 			size = readWord(fp);
-			newObj = staticIAllocate(BytesPerWord);
-			indirArray[indirtop++] = newObj;
-			inewObj = (struct integerObject *) newObj;
-			inewObj->class = objectRead(fp);
-			inewObj->value = size;
+			newObj = newInteger(size);
 			break;
 
 		case 3:	/* byte arrays */
@@ -420,9 +428,6 @@ fileIn(FILE * fp)
 
 	/* read in the method from the image file */
 	nilObject = objectRead(fp);
-	for (i = 0; i < 10; i++) {
-		smallInts[i] = objectRead(fp);
-	}
 	trueObject = objectRead(fp);
 	falseObject = objectRead(fp);
 	globalsObject = objectRead(fp);
@@ -456,12 +461,18 @@ writeWord(FILE * fp, int i)
 }
 
 static void
-objectWrite(FILE * fp, struct object * obj)
+objectWrite(FILE *fp, struct object * obj)
 {
 	int i, size;
 
 	if (obj == 0) {
 		sysError("writing out a null object", (int)obj);
+	}
+
+	if (IS_SMALLINT(obj)) { /* SmallInt */
+		writeWord(fp, 2);
+		writeWord(fp, integerValue(obj));
+		return;
 	}
 
 	/* see if already written */
@@ -479,13 +490,6 @@ objectWrite(FILE * fp, struct object * obj)
 
 	/* not written, do it now */
 	indirArray[indirtop++] = obj;
-
-	if (obj->class == SmallIntClass) { /* integer */
-		writeWord(fp, 2);
-		writeWord(fp, integerValue(obj));
-		objectWrite(fp, obj->class);
-		return;
-	}
 
 	/* byte objects */
 	if (obj->size & 02) {
@@ -524,9 +528,6 @@ fileOut(FILE * fp)
 
 	/* write out the roots of the image file */
 	objectWrite(fp, nilObject);
-	for (i = 0; i < 10; i++) {
-		objectWrite(fp, smallInts[i]);
-	}
 	objectWrite(fp, trueObject);
 	objectWrite(fp, falseObject);
 	objectWrite(fp, globalsObject);

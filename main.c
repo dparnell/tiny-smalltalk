@@ -42,29 +42,6 @@ sysError(char * a, unsigned int b)
 	exit(1);
 }
 
-struct object *
-nwInteger(unsigned int v)
-{
-	register struct integerObject * n;
-
-	if (v < 10)
-		return smallInts[v];
-	n = (struct integerObject *) gcialloc(BytesPerWord);
-	n->class = SmallIntClass;
-	n->value = v;
-	return (struct object *) n;
-}
-
-struct object * staticInteger(int v)
-{
-	struct integerObject * n;
-
-	n = (struct integerObject *) staticIAllocate(BytesPerWord);
-	n->class = SmallIntClass;
-	n->value = v;
-	return (struct object *) n;
-}
-
 void backTrace(struct object * aContext)
 {
 	printf("back trace\n");
@@ -158,8 +135,8 @@ main(int argc, char ** argv)
 	aContext->data[argumentsInContext] = nilObject;
 
 	aContext->data[temporariesInContext] = staticAllocate(19);
-	aContext->data[bytePointerInContext] = staticInteger(0);
-	aContext->data[stackTopInContext] = staticInteger(0);
+	aContext->data[bytePointerInContext] = newInteger(0);
+	aContext->data[stackTopInContext] = newInteger(0);
 	aContext->data[previousContextInContext] = nilObject;
 	aContext->data[methodInContext] = initialMethod;
 
@@ -237,7 +214,7 @@ primitive(int primitiveNumber, struct object * args)
 			if (fileTop + 1 >= FILEMAX) {
 				sysError("too many open files", 0);
 			}
-			returnedValue = nwInteger(fileTop);
+			returnedValue = newInteger(fileTop);
 			filePointers[fileTop++] = fp;
 		}
 		break;
@@ -246,7 +223,7 @@ primitive(int primitiveNumber, struct object * args)
 		i = integerValue(args->data[0]);
 		i = fgetc(filePointers[i]);
 		if (i != EOF) {
-			returnedValue = nwInteger(i);
+			returnedValue = newInteger(i);
 		}
 		break;
 

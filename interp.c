@@ -27,18 +27,13 @@ extern int debugging;
 extern int cacheHit;
 extern int cacheMiss;
 
-
-extern struct object * nwInteger(int);
-# define newInteger(x) (((uint)(x) < 10) ? \
-	smallInts[x] : nwInteger(x))
-
 extern struct object *primitive(int, struct object *);
 
 /*
 	The following are roots for the file out 
 */
 
-struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
+struct object *nilObject, *trueObject, *falseObject,
 	*SmallIntClass, *ArrayClass, *BlockClass, *ContextClass,
 	*globalsObject, *initialMethod, *binaryMessages[3],
 	*IntegerClass;
@@ -335,7 +330,7 @@ execute(struct object *aProcess)
 		switch(low) {
 			case 0: case 1: case 2: case 3: case 4: 
 			case 5: case 6: case 7: case 8: case 9:
-				stack->data[stackTop++] = smallInts[low];
+				stack->data[stackTop++] = newInteger(low);
 				break;
 			case nilConst: 
 				stack->data[stackTop++] = nilObject; break;
@@ -366,11 +361,12 @@ execute(struct object *aProcess)
 			= rootStack[--rootTop];
 		returnedValue->data[stackInBlock] = rootStack[--rootTop];
 		context = rootStack[--rootTop];
-		if (context->class == BlockClass)
+		if (CLASS(context) == BlockClass) {
 			returnedValue->data[creatingContextInBlock] =
 				context->data[creatingContextInBlock];
-		else
+		} else {
 			returnedValue->data[creatingContextInBlock] = context;
+		}
 		method = returnedValue->data[methodInBlock] = 
 			context->data[methodInBlock];
 		arguments = returnedValue->data[argumentsInBlock] =
@@ -441,7 +437,7 @@ execute(struct object *aProcess)
 		arguments = stack->data[--stackTop];
 
 	     findMethodFromSymbol:
-		receiverClass = arguments->data[receiverInArguments]->class;
+		receiverClass = CLASS(arguments->data[receiverInArguments]);
 		DBGS("SendMessage",
 			bytePtr(receiverClass->data[nameInClass]),
 			bytePtr(messageSelector));
@@ -480,18 +476,20 @@ execute(struct object *aProcess)
 		low = integerValue(method->data[temporarySizeInMethod]);
 		rootStack[rootTop++] = 
 			gcalloc(integerValue(method->data[stackSizeInMethod]));
-		if (low > 0) {int i;
+		if (low > 0) {
+			int i;
+
 			temporaries = gcalloc(low);
 			temporaries->class = ArrayClass;
 			for (i = 0; i < low; i++)
 				temporaries->data[i] = nilObject;
 			rootStack[rootTop++] = temporaries; /* temporaries */
-			}
-		else
+		} else {
 			rootStack[rootTop++] = 0;	/* why bother */
 			/* the following silly gyrations are just in case */
 			/* gc occurs while we are building a couple of */
 			/* integers to save the current state */
+		}
 		rootStack[rootTop++] = newInteger(bytePointer);
 		rootStack[rootTop++] = newInteger(stackTop);
 		context = rootStack[rootTop-5];
@@ -549,43 +547,38 @@ execute(struct object *aProcess)
 
 	    case SendBinary:	/* optimize certain binary messages */
 		DBG1("SendBinary", low);
-		if ((stack->data[stackTop-1]->class == SmallIntClass)
-			&& (stack->data[stackTop-2]->class == SmallIntClass)) {
+		if (IS_SMALLINT(stack->data[stackTop-1])
+			 && IS_SMALLINT(stack->data[stackTop-2])) {
 			int i, j;
 			j = integerValue(stack->data[--stackTop]);
 			i = integerValue(stack->data[--stackTop]);
 				/* can only do operations that won't */
 				/* trigger garbage collection */
 			switch(low) {
-				case 0:	/* < */
-					if (i < j)
-						returnedValue = trueObject;
-					else
-						returnedValue = falseObject;
-					break;
-				case 1:	/* <= */
-					if (i <= j)
-						returnedValue = trueObject;
-					else
-						returnedValue = falseObject;
-					break;
-				case 2:	/* + */
-					/* can only optimize if there is */
-					/* no possibility of garbage col */
-					if (i + j < 10)
-						returnedValue = smallInts[i+j];
-					else {
-						/* undo the stack pop */
-						stackTop += 2;
-						goto longway;
-						}
-					break;
+			case 0:	/* < */
+				if (i < j) {
+					returnedValue = trueObject;
+				} else {
+					returnedValue = falseObject;
 				}
+				break;
+			case 1:	/* <= */
+				if (i <= j) {
+					returnedValue = trueObject;
+				} else {
+					returnedValue = falseObject;
+				}
+				break;
+			case 2:	/* + */
+				/* no possibility of garbage col */
+				returnedValue = newInteger(i+j);
+				break;
+			}
 			stack->data[stackTop++] = returnedValue;
 			break;
-			}
-			/* not integers, do as message send */
-		longway:
+		}
+
+		/* not integers, do as message send */
 		rootStack[rootTop++] = context;
 		arguments = gcalloc(2);
 		arguments->class = ArrayClass;
@@ -609,13 +602,13 @@ execute(struct object *aProcess)
  */
 #define GET_HIGH_LOW() \
 	op = stack->data[--stackTop]; \
-	if (op->class != SmallIntClass) { \
+	if (!IS_SMALLINT(op)) { \
 		stackTop -= 1; \
 		goto failPrimitive; \
 	} \
 	low = integerValue(op); \
 	op = stack->data[--stackTop]; \
-	if (op->class != SmallIntClass) { \
+	if (!IS_SMALLINT(op)) { \
 		goto failPrimitive; \
 	} \
 	high = integerValue(op);
@@ -638,7 +631,8 @@ execute(struct object *aProcess)
 			break;
 
 		case 2:		/* object class */
-			returnedValue = stack->data[--stackTop]->class;
+			returnedValue = stack->data[--stackTop];
+			returnedValue = CLASS(returnedValue);
 			break;
 
 		case 3:	/* print a single character */
@@ -655,7 +649,7 @@ execute(struct object *aProcess)
 
 		case 5:		/* Array at put */
 			op = stack->data[--stackTop];
-			if (op->class != SmallIntClass) {
+			if (!IS_SMALLINT(op)) {
 				stackTop -= 2;
 				goto failPrimitive;
 			}
@@ -873,12 +867,12 @@ execute(struct object *aProcess)
 		case 30:	/* Integer less than */
 		case 31:	/* Integer equality */
 			op = stack->data[--stackTop];
-			if (op->class != IntegerClass) {
+			if (CLASS(op) != IntegerClass) {
 				stackTop -= 1;
 				goto failPrimitive;
 			}
 			returnedValue = stack->data[--stackTop];
-			if (returnedValue->class != IntegerClass) {
+			if (CLASS(returnedValue) != IntegerClass) {
 				goto failPrimitive;
 			}
 			returnedValue = do_Integer(high,

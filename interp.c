@@ -1089,6 +1089,31 @@ checkCache:
 		}
 		break;
 
+	    case 39:	/* bitShift: */
+	    	op = stack->data[--stackTop];
+		if (!IS_SMALLINT(op)) {
+			--stackTop;
+			goto failPrimitive;
+		}
+		low = integerValue(op);
+		op = stack->data[--stackTop];
+		if (!IS_SMALLINT(op)) {
+			goto failPrimitive;
+		}
+		high = integerValue(op);
+		if (low < 0) {
+			/* Negative means shift right */
+			low = high >> (-low);
+		} else {
+			/* Shift left--catch overflow */
+			low = high << low;
+			if (high > low) {
+				goto failPrimitive;
+			}
+		}
+		returnedValue = newInteger(low);
+		break;
+
 	    default:
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;

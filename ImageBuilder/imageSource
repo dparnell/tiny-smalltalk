@@ -1613,6 +1613,10 @@ METHOD Number
 bitOr: arg
 	^ (self asSmallInt bitOr: arg)
 !
+METHOD Number
+bitShift: arg
+	^ (self asSmallInt bitShift: arg)
+!
 COMMENT ---------- SmallInt ------------
 METHOD SmallInt
 asSmallInt
@@ -1673,12 +1677,18 @@ hash
 METHOD SmallInt
 bitOr: arg
 	<36 self arg>.
-	(self bitOr: arg asSmallInt)
+	^ (self bitOr: arg asSmallInt)
 !
 METHOD SmallInt
 bitAnd: arg
 	<37 self arg>.
-	(self bitAnd: arg asSmallInt)
+	^ (self bitAnd: arg asSmallInt)
+!
+METHOD SmallInt
+bitShift: arg
+	<39 self arg>.
+	(arg isKindOf: SmallInt) ifTrue: [ self overflow ].
+	^ (self bitShift: arg asSmallInt)
 !
 COMMENT ---------- Integer ------------
 METHOD MetaInteger

@@ -575,6 +575,17 @@ execute(struct object *aProcess)
 				returnedValue = stack->data[--stackTop];
 				returnedValue->data[low-1] 
 					= stack->data[--stackTop];
+				/*
+				 * If putting a non-static pointer
+				 * into an array in static memory,
+				 * register it for GC.
+				 */
+				if (!isDynamicMemory(returnedValue) 
+						&& isDynamicMemory(
+						 stack->data[stackTop])) {
+					addStaticRoot(
+					 &returnedValue->data[low-1]);
+				}
 				break;
 
 			case 6:		/* new process execute */

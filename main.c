@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <limits.h>
+#if defined(VSTA) && defined(PROFILE)
+# include <mcount.h>
+#endif
 #include "globs.h"
 
 /*
@@ -146,6 +149,9 @@ main(int argc, char ** argv)
 	/* now go do it */
 	rootStack[rootTop++] = aProcess;
 
+#if defined(VSTA) && defined(PROFILE)
+	take_samples(1);
+#endif
 	switch(execute(aProcess)) {
 		case 2: printf("User defined return\n"); break;
 
@@ -162,7 +168,10 @@ main(int argc, char ** argv)
 		case 5: printf("time out\n"); break;
 
 		default: printf("unknown return code\n"); break;
-		}
+	}
+#if defined(VSTA) && defined(PROFILE)
+	dump_samples();
+#endif
 	printf("cache hit %u miss %u", cacheHit, cacheMiss);
 #define SCALE (1000)
 	while ((cacheHit > INT_MAX/SCALE) || (cacheMiss > INT_MAX/SCALE)) {

@@ -2,9 +2,11 @@
 	image building utility
 */
 
-# include <stdio.h>
-# include "memory.h"
-# include "interp.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "memory.h"
+#include "interp.h"
 
 static FILE * fin;
 static char inputBuffer[1500];
@@ -12,6 +14,7 @@ static char *p;
 static char tokenBuffer[80];
 
 static struct object *lookupGlobal(char * name, int ok_missing);
+static int parseStatement(void), parseExpression(void);
 
 static void
 sysError(char * a, char * b)
@@ -140,7 +143,8 @@ lookupGlobal(char *name, int ok_missing)
 /* ------------------------------------------------------------- */
 
 static void inputMethodText()
-{	char * q, c;
+{
+	char c;
 
 	p = inputBuffer;
 	while (1) {
@@ -324,11 +328,13 @@ struct object * newTree()
 	return result;
 }
 
-struct object * newDictionary()
+struct object *
+newMethodDictionary()
 {
-	struct object * result;
+	struct object *result;
 
 	result = gcalloc(1);
+	/* TBD: this isn't really a Dictionary */
 	result->class = lookupGlobal("Dictionary", 0);
 	result->data[0] = newTree();
 	return result;
@@ -436,19 +442,13 @@ static struct object * currentClass;
 
 static void bigBang()
 {
-	struct object * ObjectClass;
-	struct object * MetaObjectClass;
-	struct object * ClassClass;
-	struct object * NilClass;
-	struct object * TrueClass;
-	struct object * FalseClass;
-	struct object * StringClass;
-	struct object * TreeClass;
-	struct object * DictionaryClass;
+	struct object *ObjectClass, *MetaObjectClass, *ClassClass,
+		*NilClass, *TrueClass, *FalseClass, *StringClass,
+		*TreeClass, *DictionaryClass, *OrderedArrayClass;
 	int i;
 
 		/* first, make the nil (undefined) object */
-		/* notice it's class is wrong */
+		/* notice its class is wrong */
 	nilObject = gcalloc(0);
 
 		/* second, make class for Symbol */
@@ -509,6 +509,9 @@ static void bigBang()
 	ArrayClass = newClass("Array");
 	addGlobalName("Array", ArrayClass);
 
+	OrderedArrayClass = newClass("OrderedArray");
+	addGlobalName("OrderedArray", OrderedArrayClass);
+
 	StringClass = newClass("String");
 	addGlobalName("String", StringClass);
 
@@ -519,12 +522,12 @@ static void bigBang()
 	addGlobalName("Dictionary", DictionaryClass);
 
 		/* finally, we can fill in the fields in class Object */
-	ObjectClass->data[methodsInClass] = newDictionary();
+	ObjectClass->data[methodsInClass] = newMethodDictionary();
 	ObjectClass->data[instanceSizeInClass] = newInteger(0);
 	ClassClass->data[instanceSizeInClass] = newInteger(0);
 
 		/* can make global name, but can't fill it in */
-	globalValues = gcalloc(1);
+	globalValues = gcalloc(2);
 	addGlobalName("globals", globalValues);
 }
 
@@ -572,6 +575,9 @@ static int parsePrimitive()
 	/* generate instructions */
 	genInstruction(DoPrimitive, argumentCount);
 	genByte(primitiveNumber);
+
+	/* Success */
+	return(1);
 }
 
 static struct object * newString(char * text)
@@ -590,7 +596,6 @@ static struct object * newString(char * text)
 static int parseString()
 {	
 	char *q;
-	int i;
 	
 	p++;
 	for (q = tokenBuffer; *p && *p != '\''; )
@@ -692,7 +697,6 @@ static char * blockbackup;
 
 static int parseBlock()
 {	
-	struct object * theBlock;
 	int savedLocation, saveTop, argCount;
 	char * savestart;
 
@@ -770,7 +774,7 @@ static int parseChar()
 }
 
 int parseTerm()
-{	int i;
+{
 
 	/* make it so anything other than a block zeros out backup var */
 	blockbackup = 0;
@@ -925,6 +929,7 @@ static int controlFlow(int opt1, char * rest, int opt2)
 	return 1;
 }
 
+#ifdef LATER
 static int optimizeLoop(int branchInstruction)
 {	int L1, L2;
 
@@ -946,6 +951,7 @@ static int optimizeLoop(int branchInstruction)
 	genInstruction(PushConstant, 0);
 	return 1;
 }
+#endif /* LATER */
 
 static int parseKeywordContinuation()
 {	int argCount, i, done, saveSuper;
@@ -1023,7 +1029,8 @@ static int doAssignment(char * name)
 	return parseError("unknown target of assignment");
 }
 
-int parseExpression()
+static int
+parseExpression(void)
 {	char nameBuffer[60];
 
 	if (isIdentifierChar(*p)) {
@@ -1047,7 +1054,8 @@ int parseExpression()
 	return 1;
 }
 
-int parseStatement()
+static int
+parseStatement(void)
 {
 	if (*p == '^') {	/* return statement */
 		p++; skipSpaces();
@@ -1152,7 +1160,7 @@ static int parseMethod(struct object * theMethod)
 
 /*	read the expression beyond the begin statement */
 static struct object * BeginCommand()
-{	int size;
+{
 
 	struct object * bootMethod;
 
@@ -1175,6 +1183,119 @@ static struct object * BeginCommand()
 	}
 
 	return bootMethod;
+}
+/*
+ * insert()
+ *	Insert an element in the array at the given position
+ *
+ * Creates a new Array-ish object of the same class as "array",
+ * and returns it filled in as requested.
+ */
+static struct object *
+insert(struct object *array, int index, struct object *val)
+{
+	int i, j;
+	struct object *o;
+
+	/*
+	 * Clone the current object, including class.  Make one
+	 * extra slot in the Array storage.
+	 */
+	o = gcalloc((array->size >> 2) + 1);
+	o->class = array->class;
+
+	/*
+	 * Copy up to the index
+	 */
+	for (i = 0; i < index; ++i) {
+		o->data[i] = array->data[i];
+	}
+
+	/*
+	 * Put in the new element at this position
+	 */
+	j = i;
+	o->data[i++] = val;
+
+	/*
+	 * Now copy the rest
+	 */
+	for (; j < (array->size >> 2); ++j) {
+		o->data[i++] = array->data[j];
+	}
+	return(o);
+}
+
+/*
+ * dictionaryInsert()
+ *	Insert a key/value pair into the Dictionary
+ */
+static void
+dictionaryInsert(struct object *dict, struct object *index,
+		struct object *value)
+{
+	struct object *keys = dict->data[0], *vals = dict->data[1];
+	int i, lim, res;
+
+	/*
+	 * Scan the OrderedArray "keys" to find where we fit in
+	 */
+	for (i = 0, lim = keys->size >> 2; i < lim; ++i) {
+		res = symbolCmp(index, keys->data[i]);
+
+		/*
+		 * We should go in before this node
+		 */
+		if (res < 0) {
+			dict->data[0] = insert(keys, i, index);
+			dict->data[1] = insert(vals, i, value);
+			return;
+		} else if (res > 0) {
+			continue;
+		} else {
+			sysError("dictionary insert:", "duplicate key");
+		}
+	}
+
+	/*
+	 * The new element goes at the end
+	 */
+	dict->data[0] = insert(keys, i, index);
+	dict->data[1] = insert(vals, i, value);
+}
+
+/*
+ * newArray()
+ *	Allocate a new array
+ *
+ * All slots are initialized to nil
+ */
+static struct object *
+newArray(int size)
+{
+	struct object *result;
+	int i;
+
+	result = gcalloc(size);
+	result->class = lookupGlobal("Array", 0);
+	for (i = 0; i < size; ++i) {
+		result->data[i] = nilObject;
+	}
+	return(result);
+}
+
+/*
+ * newOrderedArray()
+ *	Return a new, empty ordered array
+ */
+static struct object *
+newOrderedArray(void)
+{
+	struct object *result;
+
+	result = gcalloc(0);
+	result->class = lookupGlobal("OrderedArray", 0);
+	return(result);
 }
 
 static struct object * 
@@ -1295,7 +1416,7 @@ static void ClassCommand()
 	nClass->data[instanceSizeInClass] = newInteger(instsize); 
 	nClass->data[variablesInClass] = buildLiteralArray();
 			/* make a tree for new methods */
-	nClass->data[methodsInClass] = newDictionary();
+	nClass->data[methodsInClass] = newMethodDictionary();
 }
 
 /* ------------------------------------------------------------- */
@@ -1350,7 +1471,10 @@ static void imageOut(FILE * fp, struct object * obj)
 	if ((obj->size & 03) == 03) {	/* integer */
 		writeWord(2, fp);
 		writeWord(integerValue(obj), fp);
-	if (obj->class == 0) printf("integer object %d has null class\n", obj);
+		if (obj->class == 0) {
+			printf("integer object 0x%x has null class\n",
+				(unsigned int)obj);
+		}
 		imageOut(fp, obj->class);
 		return;
 		}
@@ -1365,7 +1489,10 @@ static void imageOut(FILE * fp, struct object * obj)
 			/*fprintf(fp," %d ", bobj->bytes[i]);*/
 			writeWord(bobj->bytes[i], fp);
 		/*fprintf(fp,"\n");*/
-	if (obj->class == 0) printf("byte object %d has null class\n", obj);
+		if (obj->class == 0) {
+			printf("byte object 0x%x has null class\n",
+				(unsigned int)obj);
+		}
 		imageOut(fp, obj->class);
 		return;
 		}
@@ -1376,7 +1503,7 @@ static void imageOut(FILE * fp, struct object * obj)
 	writeWord(1, fp);
 	writeWord(size, fp);
 	if (obj->class == 0) {
-		printf("object %d has null class\n", obj);
+		printf("object 0x%x has null class\n", (unsigned int)obj);
 	}
 	imageOut(fp, obj->class);
 	for (i = 0; i < size; i++) {
@@ -1415,21 +1542,21 @@ struct object * fixSymbols() {
 
 
 void fixGlobals() {
-	struct object * t;
-	struct object * tr;
+	struct object *t;
 	int i;
 
 	t = globalValues;
 	t->class = lookupGlobal("Dictionary", 0);
-	t->data[0] = tr = newTree();
+	t->data[0] = newOrderedArray();
+	t->data[1] = newArray(0);
 
 	for (i = 0; i < globalTop; i++) {
-		if (strncmp(globalNames[i], "Meta", 4) != 0)
-		tr->data[0] = associationInsert(tr->data[0],
-			newNode(
-			newAssociation(newSymbol(globalNames[i]), globals[i]),
-			nilObject, nilObject));
-			}
+		if (strncmp(globalNames[i], "Meta", 4) == 0) {
+			continue;
+		}
+		dictionaryInsert(t, newSymbol(globalNames[i]),
+			globals[i]);
+	}
 }
 
 /* ------------------------------------------------------------- */
@@ -1453,7 +1580,8 @@ checkGlobals(void)
 /*	main program   */
 /* ------------------------------------------------------------- */
 
-main() 
+int
+main()
 {	FILE *fd;
 	struct object * bootMethod = 0;
 	int i;
@@ -1508,7 +1636,5 @@ main()
 	printf("%d objects written\n", imageTop);
 	printf("%d associations\n", countAssociations);
 	printf("bye for now!\n");
-	exit(0);
+	return(0);
 }
-
-

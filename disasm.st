@@ -1,9 +1,18 @@
 !Method
-disassemble: indent at: initPC for: initCount | pc low high count |
+disassemble: indent at: initPC for: initCount | pc low high count needCR |
 	pc <- initPC.
 	count <- initCount.
 	[ count > 0 ] whileTrue: [
+		" Default, terminate line with CR "
+		needCR <- true.
+
 		" Show PC and indent listing of line "
+		((pc rem: 20) = 0) ifTrue: [
+			low <- String input.
+			((low size > 0) and: [ (low at: 1) = $q ]) ifTrue: [
+				self error: 'Disassembly halted'
+			]
+		].
 		((pc - 1) printWidth: 4) print.
 		1 to: indent do: [:x| ' ' print].
 
@@ -95,10 +104,11 @@ disassemble: indent at: initPC for: initCount | pc low high count |
 			pc <- pc + 1.
 			low <- low + ((byteCodes at: pc) * 256).
 			pc <- pc + 1.
-			high <- low - pc.
+			high <- low - (pc-1).
 			self disassemble: indent+4 at: pc for: high.
 			count <- count - (high + 2).
-			pc <- low
+			pc <- pc + high.
+			needCR <- false
 		].
 
 		(high = 13) ifTrue: [
@@ -193,7 +203,9 @@ disassemble: indent at: initPC for: initCount | pc low high count |
 			].
 			(low = 12) ifTrue: [ 'breakpoint' print ].
 		].
-		Char newline print
+		needCR ifTrue: [
+			Char newline print
+		]
 	]
 !
 !Method

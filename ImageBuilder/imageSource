@@ -1848,10 +1848,9 @@ lexInteger	| start |
 METHOD Parser
 lexAlphabetic | cc start |
 	start <- index.
-	[ (cc <- self nextChar) isAlphabetic ]
+	[ ((cc <- self nextChar) isAlphabetic) or: [ cc = $: ] ]
 			whileTrue: [ nil ].
 		" add any trailing colons "
-	cc = $: ifTrue: [ self nextChar ].
 	token <- text from: start to: index - 1
 !
 METHOD Parser
@@ -2051,7 +2050,7 @@ readString  | first last cc |
 METHOD Parser
 readSymbol   | cc |
 	cc <- self currentChar.
-	(cc isNil or: [ cc isBlank])
+	(cc isEOF or: [ cc isBlank])
 		ifTrue: [ self error: 'invalid symbol'].
 	cc = $( ifTrue: [ ^ self readArray ].
 	(self charIsSyntax: cc)

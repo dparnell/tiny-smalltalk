@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <limits.h>
 #include "globs.h"
 
 /*
@@ -31,10 +32,7 @@
 
 /* # define COUNTTEMPS */
 
-int debugging = 0;
-int cacheHit = 0;
-int cacheMiss = 0;
-int gccount = 0;
+unsigned int debugging = 0, cacheHit = 0, cacheMiss = 0, gccount = 0;
 static char *tmpdir = DefaultTmpdir;
 
 void
@@ -185,10 +183,15 @@ main(int argc, char ** argv)
 
 		default: printf("unknown return code\n"); break;
 		}
-	i = (1000 * cacheHit) / (cacheHit + cacheMiss);
-	printf("cache hit %d miss %d ratio %d.%d%%\n",
-		cacheHit, cacheMiss, i / 10, i % 10);
-	printf("%d garbage collections\n", gccount);
+	printf("cache hit %u miss %u", cacheHit, cacheMiss);
+#define SCALE (1000)
+	while ((cacheHit > INT_MAX/SCALE) || (cacheMiss > INT_MAX/SCALE)) {
+		cacheHit /= 10;
+		cacheMiss /= 10;
+	}
+	i = (SCALE * cacheHit) / (cacheHit + cacheMiss);
+	printf(" ratio %u.%u%%\n", i / 10, i % 10);
+	printf("%u garbage collections\n", gccount);
 	return(0);
 }
 

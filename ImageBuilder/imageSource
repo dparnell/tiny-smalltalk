@@ -430,6 +430,7 @@ perform: aMethod withArguments: a
 	bytePointer <- 0.
 	stack <- Array new: method stackSize.
 	stackTop <- 0.
+	temporaries <- Array new: method temporarySize.
 	^ Process new execute: self
 !
 METHOD Context
@@ -450,19 +451,26 @@ backtrace | narg |
 !
 COMMENT ---------- Blocks ------------
 METHOD Block
+argCount
+	self error: 'Incorrect argument passing to Block'
+!
+METHOD Block
 value
 	" start block execution "
 	<8 self>
+	(self argCount)
 !
 METHOD Block
 value: a
 	" start block execution "
 	<8 a self>
+	(self argCount)
 !
 METHOD Block
 value: a value: b
 	" start block execution "
 	<8 a b self>
+	(self argCount)
 !
 METHOD Block
 whileTrue: aBlock
@@ -574,6 +582,10 @@ name
 METHOD Method
 stackSize
 	^ stackSize
+!
+METHOD Method
+temporarySize
+	^temporarySize
 !
 COMMENT -----------Chars--------------
 METHOD MetaChar

@@ -34,6 +34,19 @@ browse
 	Browser on: self
 !
 
+" ivars
+	Dump instance variables of named object
+"
+!Browser
+ivars: obj | iv |
+	iv <- obj class instanceVariables.
+	1 to: iv size do: [:idx|
+		idx print. Char tab print.
+		(iv at: idx) print. ': ' print.
+		(Object in: obj at: idx) printNl
+	]
+!
+
 " on:
 	Main UI loop for browser
 "
@@ -88,6 +101,12 @@ on: top | cmd done last obj args idx |
 			idx <- (args at: 1) asNumber.
 			last <- Object in: obj at: idx.
 			last printNl.
+			done <- true
+		].
+
+		" List instance variables "
+		((cmd = 'iv') or: [cmd = 'ivars']) ifTrue: [
+			self ivars: obj.
 			done <- true
 		].
 

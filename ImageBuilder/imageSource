@@ -426,11 +426,16 @@ perform: aMethod withArguments: a
 	^ Process new execute: self
 !
 METHOD Context
-backtrace
+backtrace | narg |
 		" backtrace context calls "
+	narg <- 0.
 	method name print.
 	'(' print.
-	arguments do: [:a | a class print. ',' print ].
+	arguments do: [:a |
+		(narg > 0) ifTrue: [ ', ' print ].
+		a class print.
+		narg <- narg+1
+	].
 	')' print.
 	Char newline print.
 	previousContext notNil
@@ -461,11 +466,16 @@ whileFalse: aBlock
 	self value ifFalse: [ aBlock value. ^ self whileFalse: aBlock ]
 !
 METHOD Block
-backtrace
+backtrace | narg |
 		" backtrace context calls "
 	'block from ' print. method name print.
 	'(' print.
-	arguments do: [:a | a class print. ',' print ].
+	narg <- 0.
+	arguments do: [:a |
+		(narg > 0) ifTrue: [', ' print ].
+		a class print.
+		narg <- narg+1
+	].
 	')' print.
 	Char newline print.
 	previousContext notNil
@@ -1050,8 +1060,8 @@ COMMENT ---------- Dictionary ------------
 METHOD MetaDictionary
 new | newDict |
 	newDict <- super new.
-	self in: newDict at: 1 put: OrderedArray new: 0.
-	self in: newDict at: 2 put: Array new: 0.
+	self in: newDict at: 1 put: (OrderedArray new: 0).
+	self in: newDict at: 2 put: (Array new: 0).
 	^ newDict
 !
 METHOD Dictionary

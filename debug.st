@@ -264,7 +264,7 @@ printReg: reg in: ctx
 	'Unknown register: ' print. reg print
 !
 !Debug
-examine: arg | args var ctx meth |
+examine: args | ctx meth |
 	" Get the DebugMethod, which has symbolic information for variables "
 	ctx <- proc context.
 	meth <- ctx method.
@@ -275,9 +275,7 @@ examine: arg | args var ctx meth |
 	].
 
 	" Walk each variable, printing its value "
-	args <- arg break: ' '.
-	2 to: args size do: [:x|
-		var <- args at: x.
+	args do: [:var|
 		var print. ': ' print.
 		((var at: 1) = $$)
 		ifTrue: [
@@ -289,7 +287,7 @@ examine: arg | args var ctx meth |
 	]
 !
 !Debug
-run | prev did cmd done |
+run | prev did cmd done line |
 	prev <- ''.
 	done <- false.
 	[true] whileTrue: [
@@ -298,7 +296,9 @@ run | prev did cmd done |
 
 		" Get command "
 		'Debug> ' print.
-		cmd <- String input.
+		line <- String input.
+		line <- line break: ' '.
+		cmd <- line at: 1.
 		did <- false.
 		(cmd isEmpty) ifTrue: [ cmd <- prev ].
 		prev <- cmd.
@@ -332,9 +332,8 @@ run | prev did cmd done |
 		].
 
 		" Examine variables "
-		(((cmd from: 1 to: 2) = 'p ') or: [
-				(cmd from: 1 to: 6) = 'print ']) ifTrue: [
-			self examine: cmd.
+		((cmd = 'p') or: [cmd = 'print']) ifTrue: [
+			self examine: line.
 			did <- true
 		].
 

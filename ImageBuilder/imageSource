@@ -866,6 +866,10 @@ from: argLow to: argHigh | ret idx size base low high |
 	^ ret
 !
 METHOD Collection
+from: argLow
+	^ self from: argLow to: (self size)
+!
+METHOD Collection
 asString	| newString index |
 	newString <- String new: self size.
 	index <- 1.

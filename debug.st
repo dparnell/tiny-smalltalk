@@ -120,7 +120,21 @@ proc: p
 	proc <- p
 !
 !Debug
-run | prev did cmd srcl done |
+doStep | done srcl |
+	done <- false.
+	srcl <- self srcLine.
+	[done not and: [srcl = self srcLine]]
+	 whileTrue: [
+		(self runIt) ifFalse: [
+			'Execution done at line ' print.
+			srcl printString printNl.
+			done <- true
+		]
+	].
+	^ done
+!
+!Debug
+run | prev did cmd done |
 	prev <- ''.
 	done <- false.
 	[true] whileTrue: [
@@ -151,17 +165,9 @@ run | prev did cmd srcl done |
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
 			 ifFalse: [
-				srcl <- self srcLine.
-				[done not and: [srcl = self srcLine]]
-				 whileTrue: [
-					(self runIt) ifFalse: [
-						'Execution done at line ' print.
-						srcl printString printNl.
-						done <- true
-					]
-				]
-			].
-			did <- true
+				done <- self doStep.
+				did <- true
+			 ]
 		].
 
 		" Just let it run "

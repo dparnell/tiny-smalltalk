@@ -37,23 +37,41 @@ method: maxTemps class: c text: text | ret |
 	^ ret
 !
 !Class
-debug: n | meth s |
-	s <- n asSymbol.
-	meth <- methods at: s.
+setDebug: sel | meth cl dict |
+	" Chase up the superclass chain, trying to find our Method "
+	cl <- self.
+	[meth isNil] whileTrue: [
+		dict <- cl methods.
+		meth <- dict at: sel ifAbsent: [ cl <- cl superclass. nil].
+		cl isNil ifTrue: [
+			self error: ('Undefined method ' + sel printString +
+				' for class ' + self printString)
+		]
+	].
+
+	" If we haven't already fixed it up, build a DebugMethod version "
 	(meth isKindOf: DebugMethod) ifFalse: [
-		'Compiling ' print. n printString print. '...' printNl.
+		'Compiling ' print. sel printString print.
+		' for class ' print. cl print.
+		'...' printNl.
 		meth <- (Parser new text: meth text
 			instanceVars: self instanceVariables)
 			 parse: self with: DebugEncoder.
 		meth notNil
-			ifTrue: [
-				methods at: s put: meth
-			]
-			ifFalse: [
-				'Compilation failed.' printNl.
-				^ nil
-			]
+		 ifTrue: [
+			cl methods at: sel put: meth
+		 ]
+		 ifFalse: [
+			'Compilation failed.' printNl.
+		 ]
 	].
+	^ meth
+!
+!Class
+debug: n | meth s |
+	s <- n asSymbol.
+	meth <- self setDebug: s.
+	meth isNil ifTrue: [ ^ nil ].
 	Debug debug: self method: meth
 !
 !Debug
@@ -76,6 +94,18 @@ method
 bytePointer
 	^ bytePointer
 !
+!Context
+stack
+	^ stack
+!
+!Context
+stackTop
+	^ stackTop
+!
+!Method
+forClass
+	^ class
+!
 !Debug
 srcLine | meth line |
 	" Get source line corresponding to current byte pointer "
@@ -97,7 +127,7 @@ showLine | line meth |
 	line isNil
 		ifTrue: [
 			'Method ' print.  meth name print.
-			' of class ' print.  meth class print.
+			' for class ' print.  meth forClass print.
 			': no source displayed.' printNl
 		]
 		ifFalse: [
@@ -120,11 +150,55 @@ proc: p
 	proc <- p
 !
 !Debug
-doStep | done srcl |
+atCall | meth ctx low high |
+	" Get the next instruction "
+	ctx <- proc context.
+	meth <- ctx method.
+	high <- meth byteCodes at: (ctx bytePointer + 1).
+	low <- high rem: 16.
+	high <- high quo: 16.
+	(high = 0) ifTrue: [
+		high <- low.
+		low <- meth byteCodes at: (ctx bytePointer + 2)
+	].
+
+	" Return nil if it isn't a SendMessage "
+	(high = 9) ifFalse: [ ^ nil ].
+
+	" Otherwise return the selector "
+	^ meth literals at: (low + 1)
+!
+!Debug
+stepCall: sel | ctx stack sp args target meth |
+	ctx <- proc context.
+	stack <- ctx stack.
+	sp <- ctx stackTop.
+	args <- stack at: sp.
+	target <- args at: 1.
+	meth <- target class setDebug: sel.
+	meth isNil ifTrue: [ ^ true ].
+	(self runIt) ifFalse: [
+		'Execution done in ' print.
+		meth name print.
+		' of class ' print.
+		target class printNl.
+		^ true
+	].
+	^ false
+!
+!Debug
+doStep | done srcl sel |
 	done <- false.
 	srcl <- self srcLine.
 	[done not and: [srcl = self srcLine]]
 	 whileTrue: [
+		" If dropping into a new method, deal with it "
+		sel <- self atCall.
+		sel notNil ifTrue: [
+			^ self stepCall: sel
+		].
+
+		" Otherwise run a single VM operation "
 		(self runIt) ifFalse: [
 			'Execution done at line ' print.
 			srcl printString printNl.

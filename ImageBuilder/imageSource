@@ -335,6 +335,34 @@ printString
 	" just return our name "
 	^ name printString
 !
+METHOD Class
+isMeta
+	^ (name asString from: 1 to: 4) = 'Meta'
+!
+METHOD Class
+fileOut: f | tag |
+	self isMeta ifTrue: [
+		tag <- '=' + (name asString from: 5 to: 99)
+	] ifFalse: [
+		tag <- '!' + name asString
+	].
+	tag <- tag + String newline.
+	methods do: [:m|
+		f write: tag.
+		f write: (m text printString).
+		f write: ('!' + String newline)
+	]
+!
+METHOD Class
+fileOut | f |
+	f <- File openWrite: (name printString + '.st').
+	f isNil ifTrue: [ self error: 'File creation failed' ].
+	self isMeta ifFalse: [
+		self class fileOut: f
+	].
+	self fileOut: f.
+	f close
+!
 COMMENT -----------Undefined--------------
 METHOD MetaUndefined
 new
@@ -1137,6 +1165,10 @@ input	| value c nl |
 	  c isNil ifTrue: [ ^ nil ]. c ~= nl ] whileTrue:
 		[ value <- value + c asString ].
 	^ value
+!
+METHOD MetaString
+newline
+	^ Char newline asString
 !
 METHOD String
 edit
@@ -2259,8 +2291,7 @@ methodCommand: classCmd | name aClass text line |
 	[ line <- self readLine.
 	  line isNil ifTrue: [ ^ self error:
 		'unexpected end of input during fileIn' ].
-	  line ~= '!'] whileTrue: [ text <- text + line +
-		  Char newline asString ].
+	  line ~= '!'] whileTrue: [ text <- text + line + String newline ].
 	classCmd
 		ifTrue: [ aClass addMethod: text ]
 		ifFalse: [ aClass class addMethod: text ]
@@ -2274,6 +2305,10 @@ METHOD File
 write: buf size: count
 	<107 fileID buf count>.
 	self primitiveFailed
+!
+METHOD File
+write: buf
+	^ self write: buf size: (buf size)
 !
 METHOD File
 at: idx put: buf
@@ -2292,6 +2327,10 @@ at: idx size: count | buf res |
 	res <- self at: idx get: buf.
 	(res < count) ifTrue: [ buf <- buf from: 1 to: res ].
 	^ buf
+!
+METHOD File
+newline
+	^ self write: (String newline)
 !
 COMMENT --------------parser methods-----------------
 METHOD Parser

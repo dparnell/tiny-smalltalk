@@ -198,9 +198,8 @@ subclasses: indent
 !
 METHOD Class
 listMethods
-	methods binaryDo:
-		[ :name :meth | name print. Char newline print ].
-	^ 'end of list'
+	methods keysDo:
+		[ :name | name print. Char newline print ]
 !
 METHOD Class
 allMethods | allMethods |
@@ -212,7 +211,7 @@ allMethods | allMethods |
 !
 METHOD Class
 listAllMethods
-	self allMethods binaryDo: [:n :m | n print. Char newline print ]
+	self allMethods keysDo: [:n| n print. Char newline print ]
 !
 METHOD Class
 viewMethod: name  | meth |
@@ -1158,6 +1157,10 @@ METHOD Dictionary
 binaryDo: aBlock
 	1 to: keys size do:
 		[:i | aBlock value: (keys at: i) value: (values at: i) ]
+!
+METHOD Dictionary
+keysDo: aBlock
+	1 to: keys size do: [:i| aBlock value: (keys at: i)]
 !
 METHOD Dictionary
 isEmpty

@@ -1035,6 +1035,18 @@ elementsExchangeIdentityWith: otherArray
 	<35 self otherArray>.
 	self primitiveFailed
 !
+METHOD Array
+replaceFrom: start to: stop with: replacement
+	^ self replaceFrom: start to: stop with: replacement startingAt: 1
+!
+METHOD Array
+replaceFrom: start to: stop with: replacement startingAt: repStart | base |
+	base <- repStart-1.
+	0 to: (stop - start) do: [:idx|
+		self at: (idx + start) put:
+			(replacement at: (idx + repStart))
+	]
+!
 COMMENT ---------- OrderedArray ------------
 METHOD MetaOrderedArray
 new

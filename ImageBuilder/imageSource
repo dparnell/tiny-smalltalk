@@ -1160,6 +1160,10 @@ to: limit do: aBlock  | i |
 	i <- self.
 	[ i <= limit ] whileTrue: [ aBlock value: i. i <- i + 1 ]
 !
+METHOD Number
+overflow
+	self error: 'Numeric overflow'
+!
 COMMENT ---------- SmallInt ------------
 METHOD SmallInt
 asSmallInt
@@ -1239,7 +1243,7 @@ asInteger
 !
 METHOD Integer
 asSmallInt
-	(high > 0) ifTrue: [ self overFlow ].
+	(high > 0) ifTrue: [ self overflow ].
 	^low
 !
 METHOD Integer

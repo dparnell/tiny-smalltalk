@@ -153,6 +153,10 @@ error: str
 		" then halt "
 	<19>
 !
+METHOD Object
+debug
+	<18>
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v

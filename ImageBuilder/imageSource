@@ -1140,8 +1140,10 @@ factorial
 !
 METHOD Number
 printString
-	(self negative) ifTrue: [ ^ '-' + (self negated printSTring) ].
-	(self < 10) ifTrue: [ ^ (Char new: (self + 48)) asString ].
+	(self negative) ifTrue:
+		[ ^ '-' + (self negated printString) ].
+	(self < 10) ifTrue:
+		[ ^ (Char new: (self asSmallInt + 48)) asString ].
 	^ (self quo: 10) printString + (self rem: 10) printString
 !
 METHOD Number

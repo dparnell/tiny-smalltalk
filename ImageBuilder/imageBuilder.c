@@ -30,7 +30,7 @@ static struct object *nilObject, *trueObject, *falseObject,
 	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass,
 	*IntegerClass;
 
-static struct object * SymbolClass;
+static struct object *SymbolClass, *CharClass;
 
 #ifdef gcalloc
 # undef gcalloc
@@ -520,7 +520,12 @@ bigBang(void)
 	BlockClass = newClass("Block");
 	addGlobalName("Block", BlockClass);
 
-	/* SmallInt has an extra class variable, just like Symbol */
+	/* create Char with extra slot for instance var */
+	CharClass = gcalloc(ClassSize + 1);
+	addGlobalName("Char", CharClass);
+	CharClass->data[nameInClass] = newSymbol("Char");
+
+	/* SmallInt has an extra class variable, just like Symbol and Char */
 	SmallIntClass = gcalloc(ClassSize + 1);
 	addGlobalName("SmallInt", SmallIntClass);
 	SmallIntClass->data[nameInClass] = newSymbol("SmallInt");

@@ -27,7 +27,8 @@ CLASS Method        Object name byteCodes literals stackSize temporarySize class
 CLASS Magnitude     Object
 RAWCLASS MetaSymbol    Class         MetaMagnitude     symbols
 RAWCLASS Symbol        MetaSymbol    Magnitude
-CLASS Char          Magnitude          value
+RAWCLASS MetaChar      Class         MetaMagnitude     chars
+RAWCLASS Char          MetaChar      Magnitude         value
 CLASS Collection    Magnitude
 CLASS List          Collection         elements
 CLASS Dictionary    Collection        keys values
@@ -385,8 +386,10 @@ notNil
 !
 METHOD Undefined
 main	| command |
-		" main execution loop "
-	'ABCDEF' replaceFrom: 2 to: 4 with: 'abcdef' startingAt: 3.
+	" initialize classes "
+	Char initialize.
+
+	" main execution loop "
 	[ '-> ' print. command <- String input. command notNil ]
 		whileTrue: [ command isEmpty
 			ifFalse: [ command doIt printNl ] ]
@@ -688,9 +691,26 @@ args: argNames inst: instNames temp: tempNames
 !
 COMMENT -----------Chars--------------
 METHOD MetaChar
-new: value
+initialize
+	chars isNil ifTrue: [
+		chars <- Array new: 257.
+		1 to: 257 do: [:idx|
+			chars at: idx put: (Char basicNew: idx-1)
+		]
+	]
+!
+METHOD MetaChar
+basicNew: value
 	" create and initialize a new char "
 	^ self in: self new at: 1 put: value
+!
+METHOD MetaChar
+new: value
+	" return unique Char for ASCII value (or EOF) "
+	(value < 257) ifTrue: [ ^ chars at: value+1 ].
+
+	" otherwise build a custom Char "
+	^ self basicNew: value
 !
 METHOD MetaChar
 newline

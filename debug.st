@@ -163,7 +163,7 @@ atCall | ret meth ctx pc low high |
 	high <- high quo: 16.
 	(high = 0) ifTrue: [
 		high <- low.
-		low <- meth byteCodes at: (pc + 1)
+		low <- meth byteCodes at: (pc + 1).
 		pc <- pc + 1.
 	].
 
@@ -253,14 +253,16 @@ doStep: intoCalls | srcl ret |
 			].
 
 			" Stepping over call "
-			^ self overCall: (ret at: 2)
-		].
-
-		" Otherwise run a single VM operation "
-		(self runIt: 1) ifFalse: [
-			'Execution done at line ' print.
-			srcl printString printNl.
-			^ true
+			(self overCall: (ret at: 2)) ifTrue: [
+				^ true
+			]
+		] ifFalse: [
+			" Otherwise run a single VM operation "
+			(self runIt: 1) ifFalse: [
+				'Execution done at line ' print.
+				srcl printString printNl.
+				^ true
+			]
 		]
 	].
 	^ false

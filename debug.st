@@ -68,13 +68,6 @@ setDebug: sel | meth cl dict |
 	].
 	^ meth
 !
-!Class
-debug: n | meth s |
-	s <- n asSymbol.
-	meth <- self setDebug: s.
-	meth isNil ifTrue: [ ^ nil ].
-	Debug debug: self method: meth
-!
 !Debug
 runIt: count | ret |
 	" Execute for one instruction.  Return whether or not the return
@@ -138,14 +131,18 @@ showLine | line meth |
 		]
 !
 =Debug
-debug: class method: meth | ret ctx proc |
-	ret <- super new.
-	ctx <- Context new.
-	ctx setup: meth withArguments: (Array new: 1).
-	proc <- Process new.
-	proc context: ctx.
-	ret proc: proc.
-	ret run
+run: line | meth ret ctx proc |
+	meth <- (Parser new text: ('debugCmd ^' + line) instanceVars: #())
+		 parse: Undefined with: DebugEncoder.
+	meth notNil ifTrue: [
+		ret <- super new.
+		ctx <- Context new.
+		ctx setup: meth withArguments: (Array new: 1).
+		proc <- Process new.
+		proc context: ctx.
+		ret proc: proc.
+		ret run
+	]
 !
 !Debug
 proc: p

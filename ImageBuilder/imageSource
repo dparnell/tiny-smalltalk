@@ -982,9 +982,16 @@ printString
 !
 METHOD String
 printWidth: width | ret |
-	(self size >= width) ifTrue: [ ^ self ].
+	(self size >= width absolute) ifTrue: [ ^ self ].
 	ret <- self.
-	(self size + 1) to: width do: [:ignore| ret <- ret + ' ' ].
+	(width negative) ifTrue: [
+			(self size + 1) to: (width negated) do:
+				[:ignore| ret <- ' ' + ret].
+		]
+		ifFalse: [
+			(self size + 1) to: width do:
+				[:ignore| ret <- ret + ' ' ].
+		].
 	^ret
 !
 METHOD String
@@ -1206,6 +1213,10 @@ new
 METHOD Number
 negative
 	^self < 0
+!
+METHOD Number
+absolute
+	(self negative) ifTrue: [ ^ self negated ]
 !
 METHOD Number
 negated

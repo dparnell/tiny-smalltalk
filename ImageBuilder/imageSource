@@ -1501,6 +1501,10 @@ value
 	^ value
 !
 METHOD Link
+value: val
+	value <- val
+!
+METHOD Link
 next
 	^ next
 !

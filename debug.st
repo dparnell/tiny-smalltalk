@@ -1,6 +1,6 @@
 +Encoder subclass: #DebugEncoder variables: #(lines parser oldLine oldRange)
 +Method subclass: #DebugMethod variables: #(lines textlines)
-+Object subclass: #Debug variables: #(ctx proc)
++Object subclass: #Debug variables: #(proc)
 !DebugEncoder
 parser: p
 	lines <- Dictionary new.
@@ -79,7 +79,7 @@ bytePointer
 !Debug
 srcLine | meth line |
 	" Get source line corresponding to current byte pointer "
-	meth <- ctx method.
+	meth <- proc context method.
 
 	" Can't show it if this isn't a debuggable method "
 	(meth isKindOf: DebugMethod) ifFalse: [
@@ -88,11 +88,11 @@ srcLine | meth line |
 	].
 
 	" Return source line pointer or nil "
-	^ meth srcLine: ctx bytePointer.
+	^ meth srcLine: proc context bytePointer.
 !
 !Debug
 showLine | line meth |
-	meth <- ctx method.
+	meth <- proc context method.
 	line <- self srcLine.
 	line isNil
 		ifTrue: [
@@ -112,12 +112,11 @@ debug: class method: meth | ret ctx proc |
 	ctx setup: meth withArguments: (Array new: 1).
 	proc <- Process new.
 	proc context: ctx.
-	ret context: ctx proc: proc.
+	ret proc: proc.
 	ret run
 !
 !Debug
-context: c proc: p
-	ctx <- c.
+proc: p
 	proc <- p
 !
 !Debug
@@ -167,7 +166,7 @@ run | prev did cmd srcl done |
 
 		" Just let it run "
 		((cmd = 'cont') or: [cmd = 'c']) ifTrue: [
-			proc execute: ctx.
+			proc execute.
 			^ nil
 		].
 
@@ -178,7 +177,7 @@ run | prev did cmd srcl done |
 
 		" Stack backtrace "
 		((cmd = 'where') or: [cmd = 'bt']) ifTrue: [
-			ctx backtrace.
+			proc context backtrace.
 			did <- true
 		].
 

@@ -262,6 +262,8 @@ skipComment  | cc |
 	  cc ~= $" ] whileTrue: [ nil ].
 	self nextChar. self skipBlanks
 !
++5 factorial print. Char newline print.
++15 factorial print. Char newline print.
 / end of input
 @EOF
 

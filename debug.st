@@ -37,12 +37,26 @@ method: maxTemps class: c text: text | ret |
 	^ ret
 !
 !Class
-debug: n | meth |
-	meth <- methods at: n asSymbol.
-	meth <- (Parser new text: meth text
-		instanceVars: self instanceVariables)
-		 parse: self with: DebugEncoder.
-	Debug class: self method: meth
+debug: n | meth s |
+	s <- n asSymbol.
+	meth <- methods at: s.
+	(meth isKindOf: DebugMethod) ifFalse: [
+		'Compiling ' print. n printString print. '...' print.
+		Char newline print.
+		meth <- (Parser new text: meth text
+			instanceVars: self instanceVariables)
+			 parse: self with: DebugEncoder.
+		meth notNil
+			ifTrue: [
+				methods at: s put: meth
+			]
+			ifFalse: [
+				'Compilation failed.' print.
+				Char newline print.
+				^ nil
+			]
+	].
+	Debug debug: self method: meth
 !
 !Debug
 runIt | ret |
@@ -79,16 +93,18 @@ srcLine | meth line |
 !Debug
 showLine | line meth |
 	line <- self srcLine.
-	line isNil ifTrue: [
-		meth <- ctx method.
-		'Method ' print.  meth name print.
-		' of class ' print.  meth class print.
-		': no source displayed.' print.
-		^ nil
-	].
-
-	" Show the text "
-	(meth text at: line) print
+	line isNil
+		ifTrue: [
+			meth <- ctx method.
+			'Method ' print.  meth name print.
+			' of class ' print.  meth class print.
+			': no source displayed.' print.
+		]
+		ifFalse: [
+			" Show the text "
+			(meth text at: line) print
+		].
+	Char newline print
 !
 =Debug
 debug: class method: meth | ret ctx proc |
@@ -149,6 +165,12 @@ run | prev did cmd srcl |
 			^nil
 		].
 
+		" Stack backtrace "
+		((cmd = 'where') or: [cmd = 'bt']) ifTrue: [
+			ctx backtrace.
+			did <- true
+		].
+
 		" Error "
 		did ifFalse: [ 'Unknown command.' print ].
 
@@ -172,4 +194,10 @@ srcLine: bp
 		]
 	].
 	^nil
+!
+!Debug
+test | sum |
+	sum <- 0.
+	1 to: 10 do: [:x| sum <- sum + x].
+	^sum
 !

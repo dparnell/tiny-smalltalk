@@ -1289,16 +1289,12 @@ static int imageTop = 0;
 
 static void writeWord(int i, FILE * fp)
 {
-	if (i < 0) sysError("negative value in file out", 0);
-	fprintf(fp, "%d\n", i);
-	return;
 	if (i >= 255) {
 		fputc(255, fp);
 		writeWord(i - 255, fp);
-		}
-	else {
+	} else {
 		fputc(i, fp);
-		}
+	}
 }
 
 static void imageOut(FILE * fp, struct object * obj)

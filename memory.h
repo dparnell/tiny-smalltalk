@@ -99,7 +99,7 @@ extern void addStaticRoot(struct object **);
 extern struct object *nilObject, *trueObject,
 	*falseObject, *SmallIntClass, *ArrayClass, *BlockClass,
 	*ContextClass, *globalsObject, *initialMethod,
-	*binaryMessages[3], *IntegerClass;
+	*binaryMessages[3], *IntegerClass, *badMethodSym;
 
 /*
 	entry points

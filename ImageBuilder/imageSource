@@ -169,6 +169,12 @@ become: other
 	" Exchange identity with another object "
 	(Array with: self) elementsExchangeIdentityWith: (Array with: other)
 !
+METHOD Object
+doesNotUnderstand: aSel
+	self error: (self printString + ' (class '+
+		(self class printString) +
+		'): does not understand ' + aSel printString)
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v

@@ -276,20 +276,23 @@ static struct object *
 newSymbol(char * text)
 {
 	int i;
-	struct byteObject * result;
+	struct byteObject *result;
 
 		/* first see if it is already a symbol */
-	for (i = 0; i < symbolTop; i++)
+	for (i = 0; i < symbolTop; i++) {
 		if (symbolBareCmp(text, strlen(text),
-			bytePtr(oldSymbols[i]), SIZE(oldSymbols[i])) == 0)
+			bytePtr(oldSymbols[i]), SIZE(oldSymbols[i])) == 0) {
 			return oldSymbols[i];
+		}
+	}
 
 		/* not there, make a new one */
 	result = binaryAlloc(strlen(text));
-	for (i = 0; i < strlen(text); i++)
+	for (i = 0; i < strlen(text); i++) {
 		result->bytes[i] = text[i];
+	}
 	result->class = lookupGlobal("Symbol", 0);
-	oldSymbols[symbolTop++] = (struct object *) result;
+	oldSymbols[symbolTop++] = (struct object *)result;
 	return (struct object *) result;
 }
 
@@ -1522,7 +1525,7 @@ writeWord(int i, FILE * fp)
 }
 
 static void
-imageOut(FILE * fp, struct object * obj)
+imageOut(FILE *fp, struct object *obj)
 {
 	int i, size;
 
@@ -1738,6 +1741,7 @@ main(void)
 	imageOut(fd, newSymbol("<"));
 	imageOut(fd, newSymbol("<="));
 	imageOut(fd, newSymbol("+"));
+	imageOut(fd, newSymbol("doesNotUnderstand:"));
 	fclose(fd);
 	printf("%d objects written\n", imageTop);
 	printf("bye for now!\n");

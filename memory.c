@@ -451,6 +451,7 @@ fileIn(FILE * fp)
 	for (i = 0; i < 3; i++) {
 		binaryMessages[i] = objectRead(fp);
 	}
+	badMethodSym = objectRead(fp);
 
 	/* clean up after ourselves */
 	bzero((char *) indirArray, spaceSize * sizeof(struct object));
@@ -554,6 +555,7 @@ fileOut(FILE * fp)
 	for (i = 0; i < 3; i++) {
 		objectWrite(fp, binaryMessages[i]);
 	}
+	objectWrite(fp, badMethodSym);
 	printf("%d objects written in image\n", indirtop);
 
 	/* clean up after ourselves */

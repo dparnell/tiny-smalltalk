@@ -37,7 +37,7 @@ extern struct object *primitive(int, struct object *);
 struct object *nilObject, *trueObject, *falseObject,
 	*SmallIntClass, *ArrayClass, *BlockClass, *ContextClass,
 	*globalsObject, *initialMethod, *binaryMessages[3],
-	*IntegerClass;
+	*IntegerClass, *badMethodSym;
 
 /*
  * Debugging
@@ -448,12 +448,12 @@ execute(struct object *aProcess, int ticks)
 	    messageSelector = literals->data[low];
 	    arguments = stack->data[--stackTop];
 
-	 findMethodFromSymbol:
+findMethodFromSymbol:
 	    receiverClass = CLASS(arguments->data[receiverInArguments]);
 	    DBGS("SendMessage",
 		    bytePtr(receiverClass->data[nameInClass]),
 		    bytePtr(messageSelector));
-	 checkCache:
+checkCache:
 	    low = (((uint) messageSelector) +
 		    ((uint) receiverClass)) % cacheSize;
 	    if ((cache[low].name == messageSelector) &&
@@ -463,12 +463,18 @@ execute(struct object *aProcess, int ticks)
 	    } else {
 		    cacheMiss++;
 		    method = lookupMethod(messageSelector, receiverClass);
-		    if (! method) {
-			    aProcess = rootStack[--rootTop];
-			    aProcess->data[contextInProcess] = context;
-			    aProcess->data[statusInProcess] = arguments;
-			    aProcess->data[resultInProcess] = messageSelector;
-			    return(ReturnBadMethod);
+		    if (!method) {
+			    if (messageSelector == badMethodSym) {
+				    sysError("doesNotUnderstand: missing", 0);
+			    }
+			    op = gcalloc(2);
+			    op->class = ArrayClass;
+			    op->data[receiverInArguments] =
+				    arguments->data[receiverInArguments];
+			    op->data[1] = messageSelector;
+			    arguments = op;
+			    messageSelector = badMethodSym;
+			    goto findMethodFromSymbol;
 		    }
 		    cache[low].name = messageSelector;
 		    cache[low].class = receiverClass;

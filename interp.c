@@ -702,6 +702,12 @@ execute(struct object *aProcess)
 					argumentLocationInBlock]);
 			temporaries = returnedValue->data[temporariesInBlock];
 			low -= 2;
+			x = (temporaries ?
+				((temporaries->size >> 2) - high) : 0);
+			if (low >= x) {
+				stackTop -= (low+1);
+				goto failPrimitive;
+			}
 			while (low >= 0) {
 				temporaries->data[high + low] =
 					stack->data[--stackTop];

@@ -27,12 +27,13 @@
  'quit'			Leave the debugger (abandon the executing
  			target code)
  'where' or 'bt'	Show stack backtrace
+ 'l' or 'list'		List source (can provide a line # as argument)
  (blank line)		Re-enter previous command.  Useful for single
  			stepping statements in a row.
 "
 +Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
 +Method subclass: #DebugMethod variables: #(lines textlines vars bpoints active)
-+Object subclass: #Debug variables: #(proc bpoints)
++Object subclass: #Debug variables: #(proc bpoints prevList)
 !DebugEncoder
 name: n
 	lines <- Dictionary new.
@@ -156,8 +157,10 @@ srcLine | meth line |
 	^ meth srcLine: proc context bytePointer.
 !
 !Debug
-showLine | line meth |
-	meth <- proc context method.
+showLine | ctx line meth |
+	ctx <- proc context.
+	ctx isNil ifTrue: [ ^ nil ].
+	meth <- ctx method.
 	line <- self srcLine.
 	line isNil
 		ifTrue: [
@@ -167,6 +170,7 @@ showLine | line meth |
 		]
 		ifFalse: [
 			" Show the text "
+			(line printString printWidth: 8) print.
 			(meth textlines at: line ifAbsent: ['']) printNl
 		]
 !
@@ -447,6 +451,42 @@ breakActive: flag | meths |
 	meths do: [:meth| meth breakActive: flag]
 !
 !Debug
+list: args | meth where src |
+	" Get the method we're going to display "
+	meth <- proc context method.
+	(meth isKindOf: DebugMethod) ifFalse: [
+		'No debug information' printNl.
+		^ self
+	].
+
+	" Either continue listing, or start from the given place "
+	(args size < 1) ifTrue: [
+		prevList isNil ifTrue: [
+			" List around where we're currently executing "
+			where <- self srcLine - 5
+		] ifFalse: [
+			where <- prevList + 1
+		]
+	] ifFalse: [
+		where <- (args at: 1) asNumber.
+		where isNil ifTrue: [
+			'Invalid line number: ' print.
+			(args at: 1) printNl.
+			^ self
+		]
+	].
+
+	" Show 9 lines "
+	src <- meth textlines.
+	where to: (where + 8) do: [:x|
+		((x > 0) and: [x <= src size]) ifTrue: [
+			(x printString printWidth: 8) print.
+			(src at: x) printNl.
+			prevList <- x
+		]
+	]
+!
+!Debug
 run | prev did cmd done line |
 	prev <- ''.
 	done <- false.
@@ -477,6 +517,7 @@ run | prev did cmd done line |
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
 			 ifFalse: [
+				prevList <- nil.
 				(self runIt: 1) ifFalse: [
 					done <- true
 				]
@@ -488,7 +529,10 @@ run | prev did cmd done line |
 		((cmd = 'step') or: [cmd = 's']) ifTrue: [
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
-			 ifFalse: [ done <- self doStep: true ].
+			 ifFalse: [
+				 prevList <- nil.
+				 done <- self doStep: true
+			 ].
 			did <- true
 		].
 
@@ -496,7 +540,10 @@ run | prev did cmd done line |
 		((cmd = 'next') or: [cmd = 'n']) ifTrue: [
 			done
 			 ifTrue: [ 'Not runnable' printNl ]
-			 ifFalse: [ done <- self doStep: false ].
+			 ifFalse: [
+				 prevList <- nil.
+				 done <- self doStep: false
+			 ].
 			did <- true.
 		].
 
@@ -526,6 +573,9 @@ run | prev did cmd done line |
 
 		" Just let it run "
 		((cmd = 'cont') or: [cmd = 'c']) ifTrue: [
+			" Clear previous listing position "
+			prevList <- nil.
+
 			" Step forward once, even over a breakpoint "
 			done <- (self runIt: 1) not.
 
@@ -540,6 +590,12 @@ run | prev did cmd done line |
 				done ifFalse: [ self onBreak ].
 			].
 
+			did <- true
+		].
+
+		" Source listing "
+		((cmd = 'l') or: [cmd = 'list']) ifTrue: [
+			self list: line.
 			did <- true
 		].
 

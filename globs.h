@@ -4,6 +4,7 @@
  */
 #ifndef GLOBS_H
 #define GLOBS_H
+#include <sys/types.h>
 #include <stdio.h>
 
 extern int fileIn(FILE * fp), fileOut(FILE * fp);

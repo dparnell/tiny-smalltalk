@@ -50,11 +50,8 @@ static int staticRootTop = 0;
 int
 isDynamicMemory(struct object * x)
 {
-	if (inSpaceOne) {
-		return ((x >= spaceOne) && (x <= (spaceOne + spaceSize)));
-	} else {
-		return ((x >= spaceTwo) && (x <= (spaceTwo + spaceSize)));
-	}
+	return ((x >= spaceOne) && (x <= (spaceOne + spaceSize))) ||
+		((x >= spaceTwo) && (x <= (spaceTwo + spaceSize)));
 }
 
 /*

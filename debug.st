@@ -279,6 +279,16 @@ overCall: pc | ctx old res meth |
 	" Set a breakpoint at the instruction beyond the SendMessage "
 	ctx <- proc context.
 	meth <- ctx method.
+
+	" If we're within a non-debug Method, just limp forward "
+	(meth isKindOf: Debug Method) ifFalse: [
+		'Can''t step over calls in ' print. meth name print.
+		', single stepping.' printNl
+		self runIt: 1.
+		^ false
+	].
+
+	" Otherwise break beyond the call "
 	meth setBreak: pc.
 
 	" Now let it run until it hits the breakpoint, and clear

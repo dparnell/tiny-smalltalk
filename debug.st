@@ -208,7 +208,8 @@ onBreak | ctx meth rec |
 	meth <- ctx method.
 	1 to: bpoints size do: [:idx|
 		rec <- bpoints at: idx.
-		((rec at: 1) = meth) ifTrue: [
+		(((rec at: 1) = meth) and: [(rec at: 2) = self srcLine])
+		ifTrue: [
 			'Breakpoint ' print. idx print. ' hit in ' print.
 			meth name printString print. '/' print.
 			(rec at: 2) printNl.

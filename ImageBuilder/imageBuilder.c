@@ -64,15 +64,15 @@ binaryAlloc(int size)
 struct object *
 newInteger(int value)
 {
-	struct integerObject * result;
+	struct integerObject *result;
 
-	if (value < 0)
-		printf("trying to create a negative integer");
-	if (value < 10)
+	if ((value >= 0) && (value < 10)) {
 		return (struct object *) smallInts[value];
+	}
 	result = (struct integerObject *) malloc(sizeof(struct integerObject));
-	if (result == 0)
+	if (result == 0) {
 		sysError("out of memory", "newInteger");
+	}
 	result->size = ( BytesPerWord << 2 ) | 03;
 	result->class = lookupGlobal("SmallInt", 0);
 	result->value = value;
@@ -237,11 +237,18 @@ readIdentifier()
 static int
 readInteger()
 {
-	int val = *p++ - '0';
-	while (isDigit(*p))
+	int val, neg = 0;
+
+	if (*p == '-') {
+		neg = 1;
+		++p;
+	}
+	val = *p++ - '0';
+	while (isDigit(*p)) {
 		val = 10 * val + (*p++ - '0');
+	}
 	skipSpaces();
-	return val;
+	return neg ? -val : val;
 
 }
 
@@ -409,8 +416,9 @@ static int
 addLiteral(struct object * a)
 {
 	litBuffer[litTop++] = a;
-	if (litTop >= LiteralBufferTop)
+	if (litTop >= LiteralBufferTop) {
 		sysError("too many literals", "");
+	}
 	return litTop-1;
 }
 
@@ -571,9 +579,9 @@ parseInteger(void)
 	i = readInteger();
 	if ((i >= 0) && (i < 10)) {
 		genInstruction(PushConstant, i);
-		}
-	else
+	} else {
 		genInstruction(PushLiteral, addLiteral(newInteger(i)));
+	}
 	return 1;
 }
 
@@ -841,7 +849,7 @@ parseTerm(void)
 		}
 	if (*p == '<') return parsePrimitive();
 	if (*p == '$') return parseChar();
-	if (isDigit(*p)) return parseInteger();
+	if (isDigit(*p) || (*p == '-')) return parseInteger();
 	if (*p == '\'') return parseString();
 	if (isIdentifierChar(*p)) {
 		readIdentifier();

@@ -1359,6 +1359,10 @@ addAll: aCollection
 	aCollection do: [ :element | self addLast: element ]
 !
 METHOD List
++ aCollection
+	^ self addAll: aCollection
+!
+METHOD List
 copy
 	^ self asList
 !

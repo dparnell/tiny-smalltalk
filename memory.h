@@ -48,10 +48,14 @@ struct byteObject {
  * distinguishes them from all other objects, which are longword
  * aligned and are proper C memory pointers.
  */
-#define IS_SMALLINT(x) ((((int)x) & 0x01) != 0)
+#include <limits.h>
+
+#define IS_SMALLINT(x) ((((int)(x)) & 0x01) != 0)
+#define FITS_SMALLINT(x) ((((int)(x)) >= INT_MIN/2) && \
+	(((int)(x)) <= INT_MAX/2))
 #define CLASS(x) (IS_SMALLINT(x) ? SmallIntClass : ((x)->class))
-#define integerValue(x) (((int)x) >> 1)
-#define newInteger(x) ((struct object *)((((int)x) << 1) | 0x01))
+#define integerValue(x) (((int)(x)) >> 1)
+#define newInteger(x) ((struct object *)((((int)(x)) << 1) | 0x01))
 
 /*
 	memoryBase holds the pointer to the current space,

@@ -736,7 +736,11 @@ execute(struct object *aProcess)
 				returnedValue = newLInteger(
 					(long long)high + (long long)low);
 			} else {
-				returnedValue = newInteger(x);
+				if (!FITS_SMALLINT(x)) {
+					returnedValue = newLInteger(x);
+				} else {
+					returnedValue = newInteger(x);
+				}
 			}
 			break;
 			
@@ -780,7 +784,11 @@ execute(struct object *aProcess)
 			GET_HIGH_LOW();
 			x = high*low;
 			if ((low == 0) || (x/low == high)) {
-				returnedValue = newInteger(x);
+				if (!FITS_SMALLINT(x)) {
+					returnedValue = newLInteger(x);
+				} else {
+					returnedValue = newInteger(x);
+				}
 			} else {
 				/* overflow... do it with 64 bits */
 				returnedValue = newLInteger(
@@ -790,8 +798,17 @@ execute(struct object *aProcess)
 
 		case 16:	/* small integer subtraction */ 
 			GET_HIGH_LOW();
-			high -= low;
-			returnedValue = newInteger(high);
+			x = high - low;
+			if ((low > 0) && (high < 0) && (x > high)) {
+				returnedValue = newLInteger(
+					(long long)high - (long long)low);
+			} else {
+				if (!FITS_SMALLINT(x)) {
+					returnedValue = newLInteger(x);
+				} else {
+					returnedValue = newInteger(x);
+				}
+			}
 			break;
 
 		case 18: 	/* turn on debugging */
@@ -887,9 +904,10 @@ execute(struct object *aProcess)
 			rootStack[rootTop++] = stack;
 			arguments = gcalloc(low);
 			stack = rootStack[--rootTop];
-			while (low > 0)
+			while (low > 0) {
 				arguments->data[--low] = 
 					stack->data[--stackTop];
+			}
 			returnedValue = primitive(high, arguments);
 			arguments = 0;
 			break;

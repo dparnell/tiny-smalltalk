@@ -384,8 +384,12 @@ objectRead(FILE * fp)
 			break;
 
 		case 2: /* integer */
-			size = readWord(fp);
-			newObj = newInteger(size);
+			{
+			int val;
+
+			fread(&val, sizeof(val), 1, fp);
+			newObj = newInteger(val);
+			}
 			break;
 
 		case 3:	/* byte arrays */

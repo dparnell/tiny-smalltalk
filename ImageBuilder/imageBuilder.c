@@ -1448,6 +1448,9 @@ static int imageTop = 0;
 static void
 writeWord(int i, FILE * fp)
 {
+	if (i < 0) {
+		sysError("writeWord: negative value", (void *)i);
+	}
 	if (i >= 255) {
 		fputc(255, fp);
 		writeWord(i - 255, fp);
@@ -1474,9 +1477,11 @@ imageOut(FILE * fp, struct object * obj)
 	}
 
 	/* Integer objects are simply encoded as the binary value */
-	if (CLASS(obj) == SmallIntClass) {
+	if (IS_SMALLINT(obj)) {
+		int val = integerValue(obj);
+
 		writeWord(2, fp);
-		writeWord(integerValue(obj), fp);
+		fwrite(&val, sizeof(val), 1, fp);
 		return;
 	}
 

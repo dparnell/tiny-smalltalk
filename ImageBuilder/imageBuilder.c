@@ -11,7 +11,7 @@ static char inputBuffer[1500];
 static char *p;
 static char tokenBuffer[80];
 
-struct object * lookupGlobal(char * name);
+static struct object *lookupGlobal(char * name, int ok_missing);
 
 void sysError(char * a, char * b)
 {
@@ -73,7 +73,7 @@ struct object * newInteger(int value)
 	if (result == 0)
 		sysError("out of memory", "newInteger");
 	result->size = ( BytesPerWord << 2 ) | 03;
-	result->class = lookupGlobal("SmallInt");
+	result->class = lookupGlobal("SmallInt", 0);
 	result->value = value;
 	return (struct object *) result;
 }
@@ -116,13 +116,20 @@ void addGlobalName(char * name, struct object * value)
 	globalTop++;
 }
 
-struct object * lookupGlobal(char * name)
+static struct object *
+lookupGlobal(char *name, int ok_missing)
 {
 	int i;
-	for (i = 0; i < globalTop; i++)
-		if (strcmp(name, globalNames[i]) == 0)
+
+	for (i = 0; i < globalTop; i++) {
+		if (strcmp(name, globalNames[i]) == 0) {
 			return globals[i];
-		/* not found, return 0 */
+		}
+	}
+	/* not found, return 0 */
+	if (!ok_missing) {
+		sysError("Missing global", name);
+	}
 	return 0;
 }
 
@@ -266,7 +273,7 @@ struct object * newSymbol(char * text)
 	result = binaryAlloc(strlen(text));
 	for (i = 0; i < strlen(text); i++)
 		result->bytes[i] = text[i];
-	result->class = lookupGlobal("Symbol");
+	result->class = lookupGlobal("Symbol", 0);
 	oldSymbols[symbolTop++] = (struct object *) result;
 	return (struct object *) result;
 }
@@ -285,7 +292,7 @@ struct object * newNode(struct object *v, struct object *l, struct object *r)
 	struct object * result;
 
 	result = gcalloc(3);
-	result->class = lookupGlobal("Node");
+	result->class = lookupGlobal("Node", 0);
 	result->data[0] = v;
 	result->data[1] = l;
 	result->data[2] = r;
@@ -299,7 +306,7 @@ struct object * newAssociation(struct object * key, struct object * value)
 
 	countAssociations++;
 	result = gcalloc(2);
-	result->class = lookupGlobal("Association");
+	result->class = lookupGlobal("Association", 0);
 	result->data[0] = key;
 	result->data[1] = value;
 	return result;
@@ -311,7 +318,7 @@ struct object * newTree()
 	struct object * result;
 
 	result = gcalloc(1);
-	result->class = lookupGlobal("Tree");
+	result->class = lookupGlobal("Tree", 0);
 	return result;
 }
 
@@ -320,7 +327,7 @@ struct object * newDictionary()
 	struct object * result;
 
 	result = gcalloc(1);
-	result->class = lookupGlobal("Dictionary");
+	result->class = lookupGlobal("Dictionary", 0);
 	result->data[0] = newTree();
 	return result;
 }
@@ -387,7 +394,7 @@ static struct object * buildLiteralArray()
 	if (litTop == 0)
 		return nilObject;
 	result = gcalloc(litTop);
-	result->class = lookupGlobal("Array");
+	result->class = lookupGlobal("Array", 0);
 	for (i = 0; i < litTop; i++)
 		result->data[i] = litBuffer[i];
 	return result;
@@ -481,7 +488,7 @@ static void bigBang()
 			sysError("out of memory", "smallints creation");
 		si = (struct integerObject *) smallInts[i];
 		si->size = ( BytesPerWord << 2 ) | 03;
-		si->class = lookupGlobal("SmallInt");
+		si->class = lookupGlobal("SmallInt", 0);
 		si->value = i;
 		}
 
@@ -574,7 +581,7 @@ static struct object * newString(char * text)
 	newObj = binaryAlloc(size);
 	for (i = 0; i < size; i++)
 		newObj->bytes[i] = text[i];
-	newObj->class = lookupGlobal("String");
+	newObj->class = lookupGlobal("String", 0);
 	return (struct object *) newObj;
 }
 
@@ -667,7 +674,7 @@ static int nameTerm(char * name)
 		}
 		
 	/* see if global */
-	{ struct object * glob = lookupGlobal(name);
+	{ struct object *glob = lookupGlobal(name, 1);
 	if (glob) {
 		genInstruction(PushLiteral, addLiteral(glob));
 		return 1;
@@ -744,7 +751,7 @@ static int parseChar()
 
 	p++;
 	newObj = gcalloc(1);
-	newObj->class = lookupGlobal("Char");
+	newObj->class = lookupGlobal("Char", 0);
 	newObj->data[0] = newInteger((int) *p);
 	genInstruction(PushLiteral, addLiteral(newObj));
 	p++; skipSpaces();
@@ -1144,7 +1151,7 @@ static struct object * BeginCommand()
 	if (parseBody()) {
 	printf("parsed begin command ok\n");
 		bootMethod = gcalloc(methodSize);
-		bootMethod->class = lookupGlobal("Method");
+		bootMethod->class = lookupGlobal("Method", 0);
 		bootMethod->data[nameInMethod] = newSymbol("boot");
 		bootMethod->data[literalsInMethod] = buildLiteralArray();
 		bootMethod->data[byteCodesInMethod] = buildByteArray();
@@ -1197,7 +1204,7 @@ static void MethodCommand()
 
 	/* read class name */
 	readIdentifier();
-	currentClass = lookupGlobal(tokenBuffer);
+	currentClass = lookupGlobal(tokenBuffer, 1);
 	if (! currentClass)
 		sysError("unknown class in Method", tokenBuffer);
 
@@ -1206,7 +1213,7 @@ static void MethodCommand()
 	p = inputBuffer; skipSpaces();
 
 	theMethod = gcalloc(methodSize);
-	theMethod->class = lookupGlobal("Method");
+	theMethod->class = lookupGlobal("Method", 0);
 
 	/* fill in method class */
 	byteTop = 0;
@@ -1232,7 +1239,7 @@ static void ClassCommand()
 	
 	/* read the class */
 	readIdentifier();
-	nClass = lookupGlobal(tokenBuffer);
+	nClass = lookupGlobal(tokenBuffer, 1);
 	printf("Class %s\n", tokenBuffer);
 	if (! nClass) {
 		nClass = newClass(tokenBuffer);
@@ -1242,14 +1249,14 @@ static void ClassCommand()
 
 	/* now read the instance class */
 	readIdentifier();
-	instClass = lookupGlobal(tokenBuffer);
+	instClass = lookupGlobal(tokenBuffer, 1);
 	if (! instClass)
 		sysError("can't find instance class", tokenBuffer);
 	nClass->class = instClass;
 	
 	/* now read the super class */
 	readIdentifier();
-	supClass = lookupGlobal(tokenBuffer);
+	supClass = lookupGlobal(tokenBuffer, 1);
 	if (! supClass) 
 		sysError("can't find super class", tokenBuffer);
 	nClass->data[parentClassInClass] = supClass;
@@ -1353,7 +1360,9 @@ static void imageOut(FILE * fp, struct object * obj)
 	/*fprintf(fp,"1 %d ", size);*/
 	writeWord(1, fp);
 	writeWord(size, fp);
-	if (obj->class == 0) printf("object %d has null class\n", obj);
+	if (obj->class == 0) {
+		printf("object %d has null class\n", obj);
+	}
 	imageOut(fp, obj->class);
 	for (i = 0; i < size; i++) {
 		imageOut(fp, obj->data[i]);
@@ -1396,7 +1405,7 @@ void fixGlobals() {
 	int i;
 
 	t = globalValues;
-	t->class = lookupGlobal("Dictionary");
+	t->class = lookupGlobal("Dictionary", 0);
 	t->data[0] = tr = newTree();
 
 	for (i = 0; i < globalTop; i++) {
@@ -1455,7 +1464,7 @@ main()
 	imageOut(fd, SmallIntClass);
 	imageOut(fd, ArrayClass);
 	imageOut(fd, BlockClass);
-	imageOut(fd, lookupGlobal("Context"));
+	imageOut(fd, lookupGlobal("Context", 0));
 	imageOut(fd, bootMethod);
 	imageOut(fd, newSymbol("<"));
 	imageOut(fd, newSymbol("<="));

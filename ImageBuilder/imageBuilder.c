@@ -375,7 +375,7 @@ buildByteArray()
 	newObj = binaryAlloc(byteTop);
 	for (i = 0; i < byteTop; i++)
 		newObj->bytes[i] = byteBuffer[i];
-	newObj->class = nilObject;
+	newObj->class = lookupGlobal("ByteArray", 0);
 	return (struct object *) newObj;
 }
 
@@ -449,7 +449,7 @@ bigBang(void)
 	struct object *ObjectClass, *MetaObjectClass, *ClassClass,
 		*NilClass, *TrueClass, *FalseClass, *StringClass,
 		*TreeClass, *DictionaryClass, *OrderedArrayClass,
-		*MetaClassClass;
+		*MetaClassClass, *ByteArrayClass;
 
 	/*
 	 * First, make the nil (undefined) object;
@@ -510,6 +510,8 @@ bigBang(void)
 
 	ArrayClass = newClass("Array");
 	addGlobalName("Array", ArrayClass);
+	ByteArrayClass = newClass("ByteArray");
+	addGlobalName("ByteArray", ByteArrayClass);
 
 	OrderedArrayClass = newClass("OrderedArray");
 	addGlobalName("OrderedArray", OrderedArrayClass);

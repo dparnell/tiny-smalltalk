@@ -31,6 +31,7 @@
  			target code)
  'where' or 'bt'	Show stack backtrace
  'l' or 'list'		List source (can provide a line # as argument)
+ 'whatis'		Describe variable more thoroughly
  (blank line)		Re-enter previous command.  Useful for single
  			stepping statements in a row.
 "
@@ -349,6 +350,31 @@ printReg: reg in: ctx
 	'Unknown register: ' print. reg print
 !
 !Debug
+whatis: args | ctx meth |
+	" Display arguments, temporaries, instance variables, and
+	  VM registers. "
+
+	" Get the DebugMethod, which has symbolic information for variables "
+	ctx <- proc context.
+	meth <- ctx method.
+	(meth isKindOf: DebugMethod) ifFalse: [
+		'No debug information for ' print.
+		meth name printNl.
+		^ nil
+	].
+
+	" Walk each variable, printing its value "
+	args do: [:var|
+		var print. ': ' print.
+		((var at: 1) = $$)
+		ifTrue: [
+			var print. ' is a register variable' printNl.
+		] ifFalse: [
+			meth whatis: var in: ctx
+		]
+	]
+!
+!Debug
 examine: args | ctx meth |
 	" Display arguments, temporaries, instance variables, and
 	  VM registers. "
@@ -613,6 +639,12 @@ run | prev did cmd done line |
 			did <- true
 		].
 
+		" Describe variable "
+		(cmd = 'whatis') ifTrue: [
+			self whatis: line.
+			did <- true
+		].
+
 		" Set a breakpoint "
 		((cmd = 'b') or: [cmd = 'break']) ifTrue: [
 			self setBreak: line.
@@ -741,6 +773,47 @@ srcLine: bp
 	].
 	'No match for ' print. bp printString printNl.
 	^nil
+!
+!DebugMethod
+whatis: var in: ctx | idx obj |
+	" Describe a variable in this Method "
+
+	" Name of an argument "
+	idx <- (vars at: 1) indexOfVal: var.
+	idx notNil ifTrue: [
+		var print. ' is an argument' print.
+		obj <- ctx arguments at: idx
+	].
+
+	" Instance variable "
+	obj isNil ifTrue: [
+		idx <- (vars at: 2) indexOfVal: var.
+		idx notNil ifTrue: [
+			var print. ' is an instance variable' print.
+			obj <- ctx arguments at: 1.
+			obj <- (Object class in: obj at: idx)
+		]
+	].
+
+	" Temporary "
+	obj isNil ifTrue: [
+		idx <- (vars at: 3) indexOfVal: var.
+		idx notNil ifTrue: [
+			var print. ' is a temporary variable' print.
+			obj <- ctx temporaries at: idx
+		]
+	].
+
+	" If we found it, display the generic information "
+	obj notNil ifTrue: [
+		' (index ' print. idx print. ')' printNl.
+		' Value: ' print. obj printNl.
+		' Class: ' print. obj class printString print.
+		' basicSize: ' print. obj basicSize printNl.
+	] ifFalse: [
+		" Couldn't find it... "
+		'Unknown variable' print. var printNl
+	]
 !
 !DebugMethod
 print: var in: ctx | idx obj |

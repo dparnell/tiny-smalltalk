@@ -361,7 +361,7 @@ execute(struct object *aProcess, int ticks)
 	    rootStack[rootTop++] = context;
 	    op = rootStack[rootTop++] = 
 	     gcalloc(x = integerValue(method->data[stackSizeInMethod]));
-	    op->class = NULL;
+	    op->class = ArrayClass;
 	    bzero(bytePtr(op), x * BytesPerWord);
 	    returnedValue = gcalloc(blockSize);
 	    returnedValue->class = BlockClass;
@@ -492,7 +492,7 @@ execute(struct object *aProcess, int ticks)
 	    low = integerValue(method->data[temporarySizeInMethod]);
 	    op = rootStack[rootTop++] = 
 	     gcalloc(x = integerValue(method->data[stackSizeInMethod]));
-	    op->class = NULL;
+	    op->class = ArrayClass;
 	    bzero(bytePtr(op), x * BytesPerWord);
 	    if (low > 0) {
 		    int i;
@@ -953,7 +953,7 @@ execute(struct object *aProcess, int ticks)
 			    /* pop arguments, try primitive */
 		    rootStack[rootTop++] = stack;
 		    arguments = gcalloc(low);
-		    arguments->class = NULL;
+		    arguments->class = ArrayClass;
 		    stack = rootStack[--rootTop];
 		    while (low > 0) {
 			    arguments->data[--low] = 

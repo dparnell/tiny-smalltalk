@@ -26,14 +26,6 @@ showPos | cnt |
 	'' printNl
 !
 
-" browse
-	Initiate browsing on self
-"
-!Object
-browse
-	Browser on: self
-!
-
 " ivars
 	Dump instance variables of named object
 "

@@ -729,11 +729,11 @@ int execute (struct object * aProcess)
 			}
 
 			/*
-			 * Drop our context pointer from the rootStack,
-			 * then return from this context due to a
-			 * successful primitive.
+			 * Restore our context pointer and
+			 * force a stack return due to successful
+			 * primitive.
 			 */
-			rootTop -= 1;
+			context = rootStack[--rootTop];
 			goto doReturn;
 endPrimitive:
 		break;

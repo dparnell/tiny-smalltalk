@@ -540,6 +540,10 @@ asString
 	^self printString
 !
 METHOD Symbol
+asSymbol
+	^self
+!
+METHOD Symbol
 = aString
 		" works with either symbol or string arguments "
 	^ self printString = aString printString

@@ -71,7 +71,8 @@ void backTrace(struct object * aContext)
 		if (arguments && (arguments != nilObject)) {
 			printf("(");
 			for (i = 0; i < (arguments->size >> 2); i++)
-				printf("%s,", 
+				printf("%s%s", 
+				((i == 0) ? "" : ", "),
 				bytePtr(arguments->data[i]->class->
 					data[nameInClass]));
 			printf(")");
@@ -166,9 +167,11 @@ main(int argc, char ** argv)
 
 		default: printf("unknown return code\n"); break;
 		}
-	printf("cache hit %d miss %d ratio %f\%\n", cacheHit, cacheMiss,
-		100.0 * ((double) cacheHit) / ((double) cacheHit + cacheMiss));
+	i = (1000 * cacheHit) / (cacheHit + cacheMiss);
+	printf("cache hit %d miss %d ratio %d.%d%%\n",
+		cacheHit, cacheMiss, i / 10, i % 10);
 	printf("%d garbage collections\n", gccount);
+	return(0);
 }
 
 /*

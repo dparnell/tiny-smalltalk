@@ -77,6 +77,9 @@ main(int argc, char ** argv)
 	FILE *fp;
 	char imageFileName[120], *p;
 
+#if defined(VSTA) && defined(DEBUG)
+	notify_handler(NULL);
+#endif
 	strcpy(imageFileName, DefaultImageFile);
 	staticSize = DefaultStaticSize;
 	dynamicSize = DefaultDynamicSize;

@@ -256,7 +256,7 @@ editMethod: nm	| meth text |
 		ifAbsent: [ ^ self error: 'no such method'].
 	text <- meth text edit.
 	(self question: 'compile method?')
-		ifTrue: [ ^ self addMethod: text ]
+		ifTrue: [ self addMethod: text ]
 !
 METHOD Class
 subclass: nm
@@ -281,7 +281,7 @@ METHOD Class
 addMethod	| text |
 	text <- ' ' edit.
 	(self question: 'compile method?')
-		ifTrue: [ ^ self addMethod: text ]
+		ifTrue: [ self addMethod: text ]
 !
 METHOD Class
 addMethod: text | meth |
@@ -290,7 +290,7 @@ addMethod: text | meth |
 		ifTrue: [
 			methods at: meth name put: meth.
 			Method flushCache.
-			^ 'method inserted: ' + meth name printString
+			'ok' printNl
 		]
 !
 METHOD Class
@@ -2262,8 +2262,8 @@ methodCommand: classCmd | name aClass text line |
 	  line ~= '!'] whileTrue: [ text <- text + line +
 		  Char newline asString ].
 	classCmd
-		ifTrue: [ (aClass addMethod: text) printNl ]
-		ifFalse: [ (aClass class addMethod: text) printNl ]
+		ifTrue: [ aClass addMethod: text ]
+		ifFalse: [ aClass class addMethod: text ]
 !
 METHOD File
 at: idx
@@ -2306,12 +2306,17 @@ text: aString instanceVars: anArray
 	maxTemps <- 0
 !
 METHOD Parser
-parse: c with: encoderClass	| encoder meth |
+parse: c with: encoderClass	| encoder meth name |
 	" note -- must call text:instanceVars: first "
 	errBlock <- [ ^ nil ].
 	self nextLex.
 	encoder <- encoderClass new.
-	encoder name: self readMethodName.
+	name <- self readMethodName.
+	(c ~= Undefined) ifTrue: [
+		'Compiling ' print. c print. ':' print.
+		name print. '... ' print
+	].
+	encoder name: name.
 	self readMethodVariables.
 	self readBody compile: encoder block: false.
 	meth <- encoder method: maxTemps class: c text: text.

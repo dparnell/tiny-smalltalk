@@ -155,7 +155,7 @@ error: str
 !
 COMMENT ---------Class-------------------
 METHOD Class
-name: n parent: c variables: v 
+name: n parent: c variables: v
 	" create a new class with the given characteristics "
 	name <- n.
 	parentClass <- c.
@@ -183,14 +183,14 @@ METHOD Class
 subclasses: indent
 	globals do: [ :obj |
 		((obj isKindOf: Class) and: [ obj superclass == self])
-			ifTrue: [ 
+			ifTrue: [
 				1 to: indent do: [$  print ].
 				obj print. Char newline print.
 				obj subclasses: indent + 4 ] ]
 !
 METHOD Class
 listMethods
-	methods binaryDo: 
+	methods binaryDo:
 		[ :name :meth | name print. Char newline print ].
 	^ 'end of list'
 !
@@ -208,14 +208,14 @@ listAllMethods
 !
 METHOD Class
 viewMethod: name  | meth |
-	meth <- self allMethods at: name 
+	meth <- self allMethods at: name
 		ifAbsent: [ ^ self error: 'no such method'].
 	meth text print.
 	^ ''
 !
 METHOD Class
 editMethod: name	| meth text |
-	meth <- methods at: name 
+	meth <- methods at: name
 		ifAbsent: [ ^ self error: 'no such method'].
 	text <- meth text edit.
 	(self question: 'compile method?')
@@ -223,7 +223,7 @@ editMethod: name	| meth text |
 !
 METHOD Class
 subclass: name
-	^ self subclass: name variables: (Array new: 0) 
+	^ self subclass: name variables: (Array new: 0)
 		classVariables: (Array new: 0)
 !
 METHOD Class
@@ -249,8 +249,8 @@ addMethod	| text |
 METHOD Class
 addMethod: text | meth |
 	meth <- self parseMethod: text.
-	meth notNil 
-		ifTrue: [ methods at: meth name put: meth. 
+	meth notNil
+		ifTrue: [ methods at: meth name put: meth.
 		^ 'method inserted:' + meth name printString ]
 !
 METHOD Class
@@ -262,7 +262,7 @@ view: methodName
 !
 METHOD Class
 parseMethod: text
-	^ (Parser new 
+	^ (Parser new
 		text: text instanceVars: self instanceVariables) parse: self
 !
 METHOD Class
@@ -320,7 +320,7 @@ main	| command |
 COMMENT -----------Boolean--------------
 METHOD Boolean
 and: aBlock
-	^ self 
+	^ self
 		ifTrue: [ aBlock value ]
 		ifFalse: [ false ]
 !
@@ -331,7 +331,7 @@ or: aBlock
 		ifFalse: [ aBlock value ]
 !
 METHOD Boolean
-not 
+not
 	^ self
 		ifTrue: [ false ]
 		ifFalse: [ true ]
@@ -409,7 +409,7 @@ METHOD Process
 execute: aContext	| r |
 	context <- aContext.
 	r <- self doExecute.
-	(r = 3) ifTrue: [ 'Message not understood:' print. 
+	(r = 3) ifTrue: [ 'Message not understood:' print.
 			result print.  Char newline print ]
 	(r = 4) ifTrue: [ ^ result ]
 		ifFalse: [ 'Backtrace:' print. Char newline print.
@@ -433,7 +433,7 @@ backtrace
 	arguments do: [:a | a class print. ',' print ].
 	')' print.
 	Char newline print.
-	previousContext notNil 
+	previousContext notNil
 		ifTrue: [ previousContext backtrace ]
 !
 COMMENT ---------- Blocks ------------
@@ -468,7 +468,7 @@ backtrace
 	arguments do: [:a | a class print. ',' print ].
 	')' print.
 	Char newline print.
-	previousContext notNil 
+	previousContext notNil
 		ifTrue: [ previousContext backtrace ]
 !
 COMMENT -----------Magnitude--------------
@@ -687,7 +687,7 @@ collect: transformBlock	| newList |
 	self do: [:element | newList addLast: (transformBlock value: element)].
 	^ newList
 !
-METHOD Collection 
+METHOD Collection
 select: testBlock	| newList |
 	newList <- List new.
 	self do: [:x | (testBlock value: x) ifTrue: [newList addLast: x]].
@@ -715,7 +715,7 @@ new
 !
 METHOD MetaArray
 new: size
-	<7 self size> 
+	<7 self size>
 !
 METHOD Array
 at: index
@@ -789,7 +789,7 @@ METHOD Array
 METHOD Array
 = anArray
 	self size = anArray size ifFalse: [ ^ false ].
-	1 to: self size do: 
+	1 to: self size do:
 		[:i | (self at: i) = (anArray at: i)
 			ifFalse: [ ^ false ]].
 	^ true
@@ -883,7 +883,7 @@ METHOD MetaString
 input	| value c nl |
 	" read a line from input "
 	value <- ''. nl <- Char newline.
-	[ c <- Char input. 
+	[ c <- Char input.
 	  c isNil ifTrue: [ ^ nil ]. c ~= nl ] whileTrue:
 		[ value <- value + c asString ].
 	^ value
@@ -914,7 +914,7 @@ from: low to: high | start stop size newString |
 	stop <- high min: self size.
 	size <- (stop + 1 - start) max: 0.
 	newString <- String new: size.
-	1 to: size do: [ :i | 
+	1 to: size do: [ :i |
 		newString at: i put: (self at: start).
 		start <- start + 1 ].
 	^ newString
@@ -942,7 +942,7 @@ asSymbol
 METHOD String
 doIt	| meth |
 	meth <- Undefined parseMethod: 'doItCommand ^' + self.
-	^ meth notNil 
+	^ meth notNil
 		ifTrue: [ ^ Context new
 			  perform: meth withArguments: (Array new: 1) ]
 !
@@ -985,7 +985,7 @@ add: anElement
 !
 METHOD List
 addLast: anElement
-	elements isNil 
+	elements isNil
 		ifTrue: [ self add: anElement]
 		ifFalse: [ elements addLast: anElement ].
 	^ anElement
@@ -1000,7 +1000,7 @@ copy
 !
 METHOD List
 first
-	^ elements notNil 
+	^ elements notNil
 		ifTrue: [ elements value ]
 		ifFalse: [ self error: 'trying to remove from an empty list ']
 !
@@ -1010,7 +1010,7 @@ isEmpty
 !
 METHOD List
 removeFirst
-	elements isNil 
+	elements isNil
 		ifTrue: [ self error: 'removing first element from empty list']
 		ifFalse: [ elements <- elements next ]
 !
@@ -1056,10 +1056,10 @@ new | newDict |
 !
 METHOD Dictionary
 at: key
-	^ self at: key 
+	^ self at: key
 		ifAbsent: [ ^ self error: 'key not found in dictionary lookup']
 !
-METHOD Dictionary 
+METHOD Dictionary
 at: key put: value | position |
 	position <- keys location: key.
 	(position <= keys size and: [ key = (keys at: position)])
@@ -1071,7 +1071,7 @@ at: key put: value | position |
 METHOD Dictionary
 at: key ifAbsent: exceptionBlock | position |
 	position <- keys location: key.
-	position <= keys size 
+	((position <= keys size) and: [ key = (keys at: position)])
 		ifTrue: [ ^ values at: position ]
 		ifFalse: [ ^ exceptionBlock value ]
 !
@@ -1216,7 +1216,7 @@ reverseDo: aBlock
 !
 METHOD Node
 first
-	left notNil 
+	left notNil
 		ifTrue: [ ^ left first ]
 		ifFalse: [ ^ value ]
 !
@@ -1239,7 +1239,7 @@ add: anElement
 METHOD Node
 remove: key ifAbsent: exceptionBlock
 	value = key
-		ifTrue: [ right notNil 
+		ifTrue: [ right notNil
 			ifTrue: [ value <- right first.
 			right <- right removeFirst.
 			^ self ]
@@ -1278,7 +1278,7 @@ from: l to: h step: s | newInterval |
 METHOD Interval
 do: aBlock	| current |
 	current <- low.
-	(step < 0) 
+	(step < 0)
 		ifTrue: [
 			[ current >= high ] whileTrue:
 				[ aBlock value: current.
@@ -1508,7 +1508,7 @@ METHOD File
 readLine	| value  c|
 	" read a line from input "
 	value <- ''.
-	[ c <- self readChar. 
+	[ c <- self readChar.
 	  c isNil ifTrue: [ ^ nil ]. c ~= Char newline ] whileTrue:
 		[ value <- value + c asString ].
 	^ value
@@ -1517,7 +1517,7 @@ METHOD File
 fileIn		| cmd |
 	[ cmd <- self readChar. cmd notNil ]
 		whileTrue: [
-			cmd = $+ 
+			cmd = $+
 				ifTrue: [ self readLine doIt print.
 					Char newline print ]
 			ifFalse: [ (cmd = $! or: [ cmd = $=])
@@ -1527,14 +1527,14 @@ fileIn		| cmd |
 METHOD File
 methodCommand: classCmd | name aClass text line |
 	name <- self readLine asSymbol.
-	aClass <- globals at: name ifAbsent: [ ^ self error: 
+	aClass <- globals at: name ifAbsent: [ ^ self error:
 		'unknown class name in file-in: ' + name printString ].
 	text <- ''.
-	[ line <- self readLine. 
-	  line isNil ifTrue: [ ^ self error: 
+	[ line <- self readLine.
+	  line isNil ifTrue: [ ^ self error:
 		'unexpected end of input during fileIn' ].
 	  line ~= '!'] whileTrue: [ text <- text + line + Char newline asString ].
-	classCmd 
+	classCmd
 		ifTrue: [ (aClass addMethod: text) print ]
 		ifFalse: [ (aClass class addMethod: text) print ].
 	Char newline print.
@@ -1599,7 +1599,7 @@ METHOD Parser
 skipComment  | cc |
 	[ index <- index + 1.
 	  cc <- self currentChar.
-	  cc isNil 
+	  cc isNil
 		ifTrue: [ ^ self error: 'unterminated comment'].
 	  cc ~= $" ] whileTrue: [ nil ].
 	self nextChar. self skipBlanks
@@ -1626,7 +1626,7 @@ lexBinary	| c d |
 	token <- c asString.
 	d <- self nextChar.
 	(self charIsSyntax: c) ifTrue: [ ^ token ].
-	(((d isBlank 
+	(((d isBlank
 		or: [ d isDigit])
 		or: [ d isAlphabetic ])
 		or: [ self charIsSyntax: d])
@@ -1644,7 +1644,7 @@ readMethodName   | name |
 		ifTrue: [ name <- token. self nextLex. ^ name ].
 	self tokenIsBinary	" binary method "
 		ifTrue: [ name <- token. self nextLex.
-			self tokenIsName 
+			self tokenIsName
 				ifFalse: [ self error: 'missing argument'].
 				self addArgName: token asSymbol.
 				self nextLex. ^ name ].
@@ -1653,7 +1653,7 @@ readMethodName   | name |
 	name <- ''.
 	[ self tokenIsKeyword ]
 		whileTrue: [ name <- name + token. self nextLex.
-			self tokenIsName 
+			self tokenIsName
 				ifFalse: [ self error: 'missing argument'].
 				self addArgName: token asSymbol.
 				self nextLex ].
@@ -1751,7 +1751,7 @@ readTerm   | node |
 			self nextLex. ^ node ].
 	tokenType = $[ ifTrue: [ ^ self readBlock ].
 	tokenType = $< ifTrue: [ ^ self readPrimitive ].
-	self tokenIsName 
+	self tokenIsName
 		ifTrue: [ node <- self nameNode: token asSymbol.
 			self nextLex. ^ node ].
 	^ LiteralNode new value: self readLiteral
@@ -1770,9 +1770,9 @@ nameNode: name
 	(1 to: instNames size) do: [:i |
 		(name == (instNames at: i))
 			ifTrue: [ ^ InstNode new position: i ] ].
-	^ LiteralNode new; 
-		value: (globals at: name 
-			ifAbsent: [ ^ self error: 
+	^ LiteralNode new;
+		value: (globals at: name
+			ifAbsent: [ ^ self error:
 				'unrecognized name:' + name printString ])
 !
 METHOD Parser
@@ -1806,7 +1806,7 @@ readString  | first last cc |
 	  cc ~= $' ] whileTrue: [ index <- index + 1 ].
 	last <- index - 1.
 	self nextChar = $'
-		ifTrue: [ self nextChar. 
+		ifTrue: [ self nextChar.
 			^ (text from: first to: index - 2) + self readString ].
 	self nextLex.
 	^ text from: first to: last
@@ -1833,7 +1833,7 @@ readArray	| value |
 !
 METHOD Parser
 arrayLiteral	| node |
-	tokenType isAlphabetic 
+	tokenType isAlphabetic
 		ifTrue: [ node <- Symbol new: token. self nextLex. ^ node ].
 	^ self readLiteral
 !
@@ -1866,7 +1866,7 @@ readBlockTemporaries
 	[ tokenType = $: ]
 		whileTrue: [ self currentChar isAlphabetic
 			ifFalse: [ self error: 'ill formed block argument'].
-			self nextLex. 
+			self nextLex.
 			self tokenIsName
 				ifTrue: [ self addTempName: token asSymbol ]
 				ifFalse: [ self error: 'invalid block argument list '].
@@ -1883,7 +1883,7 @@ readCascade: base   | node list |
 			list <- List new.
 			[ tokenType = $; ]
 				whileTrue: [ self nextLex.
-					list add: 
+					list add:
 						(self keywordContinuation: nil ) ].
 			node list: list ].
 	^ node
@@ -1897,18 +1897,18 @@ keywordContinuation: base  | receiver name args |
 	args <- List new.
 	[ self tokenIsKeyword ]
 		whileTrue: [ name <- name + token. self nextLex.
-			args add: 
+			args add:
 				(self binaryContinuation: self readTerm) ].
 	^ MessageNode new receiver: receiver name: name asSymbol arguments: args
 !
 METHOD Parser
 binaryContinuation: base | receiver name |
 	receiver <- self unaryContinuation: base.
-	[ self tokenIsBinary] 
+	[ self tokenIsBinary]
 		whileTrue: [ name <- token asSymbol. self nextLex.
 			receiver <- MessageNode new
 				receiver: receiver name: name arguments:
-					(List with: 
+					(List with:
 						(self unaryContinuation: self readTerm)) ].
 	^ receiver
 !
@@ -1940,7 +1940,7 @@ statements: s
 !
 METHOD BodyNode
 compile: encoder block: inBlock
-	statements reverseDo: 
+	statements reverseDo:
 		[ :stmt | stmt compile: encoder block: inBlock.
 			encoder genHigh: 15 low: 5 " pop "].
 	encoder genHigh: 15 low: 1 " return self "
@@ -2099,15 +2099,15 @@ compile: encoder block: inBlock
 METHOD MessageNode
 compile2: encoder block: inBlock
 	self argumentsAreBlock ifTrue: [
-		name = #ifTrue: ifTrue: [ ^ self compile: encoder 
+		name = #ifTrue: ifTrue: [ ^ self compile: encoder
 				test: 8 constant: 10 block: inBlock ].
-		name = #ifFalse: ifTrue: [ ^ self compile: encoder 
+		name = #ifFalse: ifTrue: [ ^ self compile: encoder
 				test: 7 constant: 10 block: inBlock ].
-		name = #and: ifTrue: [ ^ self compile: encoder 
+		name = #and: ifTrue: [ ^ self compile: encoder
 				test: 8 constant: 12 block: inBlock ].
-		name = #or: ifTrue: [ ^ self compile: encoder 
+		name = #or: ifTrue: [ ^ self compile: encoder
 				test: 7 constant: 11 block: inBlock ].
-		name = #ifTrue:ifFalse: 
+		name = #ifTrue:ifFalse:
 			ifTrue: [ ^ self optimizeIf: encoder block: inBlock ].
 		].
 	self evaluateArguments: encoder block: inBlock.
@@ -2216,7 +2216,7 @@ genHigh: high low: low
 METHOD Encoder
 genCode: byte
 	index <- index + 1.
-	(index >= byteCodes size) 
+	(index >= byteCodes size)
 		ifTrue: [ self expandByteCodes].
 	byteCodes at: index put: byte.
 	^ index
@@ -2244,7 +2244,7 @@ backUp
 !
 METHOD Encoder
 method: maxTemps class: c text: text
-	^ Method name: name byteCodes: byteCodes literals: literals 
+	^ Method name: name byteCodes: byteCodes literals: literals
 		stackSize: maxStack temporarySize: maxTemps class: c
 		text: text
 !

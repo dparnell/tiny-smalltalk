@@ -1093,7 +1093,7 @@ location: value | low high mid |
 COMMENT ---------- ByteArrays ------------
 METHOD MetaByteArray
 new: size
-	<20 ByteArray size>
+	<20 self size>
 !
 METHOD ByteArray
 basicAt: index
@@ -1127,7 +1127,7 @@ asString | str sz |
 COMMENT ---------- Strings ------------
 METHOD MetaString
 new: size
-	<20 String size>
+	<20 self size>
 !
 METHOD MetaString
 input	| value c nl |
@@ -1435,8 +1435,6 @@ printString | count res |
 	^ res + ')'
 !
 COMMENT ---------- Set ------------
-COMMENT A Set... very inefficient.  Revisit when 'hash' is added to the VM.
-COMMENT by Andy Valencia, May 2001
 METHOD MetaSet
 new: size | ret |
 	ret <- super new.

@@ -1855,7 +1855,7 @@ includes: val
 !
 METHOD Interval
 printString | s |
-	s <- super printString + ' <' +
+	s <- (self class printString) + ' <' +
 		low printString + '..' + high printString.
 	(step ~= 1) ifTrue: [ s <- s + ' by ' + step printString ].
 	^ s + '>'

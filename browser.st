@@ -92,7 +92,11 @@ on: top | cmd done last obj args idx |
 
 		" Pop up a stack level "
 		((cmd = 'u') or: [cmd = 'up']) ifTrue: [
-			stack <- stack from: 1 to: (stack size - 1).
+			(stack size < 2) ifTrue: [
+				'Stack is empty' printNl
+			] ifFalse: [
+				stack <- stack from: 1 to: (stack size - 1)
+			].
 			done <- true
 		].
 
@@ -107,6 +111,16 @@ on: top | cmd done last obj args idx |
 		" List instance variables "
 		((cmd = 'iv') or: [cmd = 'ivars']) ifTrue: [
 			self ivars: obj.
+			done <- true
+		].
+
+		" Show size "
+		((cmd = 'bs') or: [cmd = 'basicsize']) ifTrue: [
+			obj basicSize printNl.
+			done <- true
+		].
+		((cmd = 'sz') or: [cmd = 'size']) ifTrue: [
+			obj size printNl.
 			done <- true
 		].
 

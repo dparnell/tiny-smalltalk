@@ -342,6 +342,7 @@ notNil
 METHOD Undefined
 main	| command |
 		" main execution loop "
+	'ABCDEF' replaceFrom: 2 to: 4 with: 'abcdef' startingAt: 3.
 	[ '-> ' print. command <- String input. command notNil ]
 		whileTrue: [ command isEmpty
 			ifFalse: [ command doIt printNl ] ]
@@ -938,8 +939,8 @@ METHOD Array
 with: newItem	| newArray size |
 	size <- self size.
 	newArray <- self class new: size + 1.
-	1 to: size do: [:i | newArray at: i put: (self at: i)].
-	newArray at: size+1 put: newItem
+	newArray replaceFrom: 1 to: size with: self.
+	newArray at: size + 1 put: newItem
 	^ newArray
 !
 METHOD Array
@@ -948,8 +949,8 @@ METHOD Array
 	size1 <- self size.
 	size2 <- aValue size.
 	newValue <- self class new: (size1 + size2).
-	1 to: size1 do: [ :i | newValue at: i put: (self at: i) ].
-	1 to: size2 do: [ :i | newValue at: (size1 + i) put: (aValue at: i)].
+	newValue replaceFrom: 1 to: size1 with: self.
+	newValue replaceFrom: size1+1 to: size1+size2 with: aValue.
 	^ newValue
 !
 METHOD Array
@@ -988,22 +989,22 @@ includesKey: index
 	^ index between: 1 and: self size
 !
 METHOD Array
-insert: value at: position | newArray |
-	newArray <- self class new: (self size + 1).
-	1 to: position - 1 do:
-		[:i | newArray at: i put: (self at: i)].
+insert: value at: position | newArray newSize |
+	newSize <- self size + 1.
+	newArray <- self class new: newSize.
+	newArray replaceFrom: 1 to: position-1 with: self.
 	newArray at: position put: value.
-	position to: self size do:
-		[:i | newArray at: i+1 put: (self at: i)].
+	newArray replaceFrom: position+1 to: newSize with:
+		self startingAt: position.
 	^ newArray
 !
 METHOD Array
-removeIndex: position  | newArray |
-	newArray <- self class new: (self size - 1).
-	1 to: position - 1 do:
-		[:i | newArray at: i put: (self at: i)].
-	position + 1 to: self size do:
-		[:i | newArray at: i+i put: (self at: i)].
+removeIndex: position  | newArray newSize |
+	newSize <- self size - 1.
+	newArray <- self class new: newSize.
+	newArray replaceFrom: 1 to: position-1 with: self.
+	newArray replaceFrom: position to: newSize with: self
+		startingAt: position+1.
 	^ newArray
 !
 METHOD Array
@@ -1041,6 +1042,7 @@ replaceFrom: start to: stop with: replacement
 !
 METHOD Array
 replaceFrom: start to: stop with: replacement startingAt: repStart | base |
+	<38 start stop replacement repStart self>.
 	base <- repStart-1.
 	0 to: (stop - start) do: [:idx|
 		self at: (idx + start) put:
@@ -1072,17 +1074,6 @@ location: value | low high mid |
 			ifTrue: [ low <- mid + 1 ]
 			ifFalse: [ high <- mid ] ].
 	^ low
-!
-METHOD MetaOrderedArray
-test	| value |
-	value <- OrderedArray new: 0.
-	value <- value add: 2.
-	value <- value add: 5.
-	value <- value add: 1.
-	value <- value add: 3.
-	value <- value add: 7.
-	value do: [:x | x print ].
-	^ value
 !
 COMMENT ---------- ByteArrays ------------
 METHOD MetaByteArray
@@ -2102,7 +2093,8 @@ METHOD File
 readChar	| c |
 		" read a single character from a file "
 	c <- self doRead.
-	c notNil ifTrue: [ ^ Char new: c ]
+	c notNil ifTrue: [ ^ Char new: c ].
+	^ c
 !
 METHOD File
 readLine	| value  c nl |

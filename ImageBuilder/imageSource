@@ -2446,7 +2446,7 @@ nextLex
 	tokenType isEOF   " end of input "
 		ifTrue: [ tokenType <- $  . token <- nil. ^ nil ].
 	tokenType isDigit ifTrue: [ ^ self lexInteger ].
-	tokenType isAlphabetic ifTrue: [ ^ self lexAlphabetic ].
+	tokenType isAlphabetic ifTrue: [ ^ self lexAlnum ].
 	^ self lexBinary
 !
 METHOD Parser
@@ -2470,9 +2470,9 @@ lexInteger	| start |
 	token <- text from: start to: index - 1
 !
 METHOD Parser
-lexAlphabetic | cc start |
+lexAlnum | cc start |
 	start <- index.
-	[ ((cc <- self nextChar) isAlphabetic) or: [ cc = $: ] ]
+	[ ((cc <- self nextChar) isAlphanumeric) or: [ cc = $: ] ]
 			whileTrue: [ nil ].
 		" add any trailing colons "
 	token <- text from: start to: index - 1

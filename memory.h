@@ -100,8 +100,10 @@ extern struct object *gcollect(int), *staticAllocate(int),
 
 extern int isDynamicMemory(struct object *);
 
-# define gcalloc(sz) (((memoryPointer-=(sz+1))<memoryBase)?\
-	gcollect(sz):(memoryPointer->size=sz<<2,memoryPointer))
-# ifndef gcalloc
-extern struct object * gcalloc(int);
-# endif
+#define gcalloc(sz) (((memoryPointer = \
+	(struct object *)(((uint *)memoryPointer) - ((sz) + 2))) < \
+	memoryBase) ?  gcollect(sz) : \
+	(memoryPointer->size = (sz) << 2, memoryPointer))
+#ifndef gcalloc
+extern struct object *gcalloc(int);
+#endif

@@ -226,6 +226,7 @@ gc_move(struct mobject * ptr)
 				while (sz && (old_address->data[sz] == 0)) {
 					sz--;
 				}
+
 				old_address->size = (sz << 2) | 01;
 				new_address->data[sz] = previous_object;
 				previous_object = old_address;
@@ -273,12 +274,13 @@ gcollect(int sz)
 	flushCache();
 
 	/* then see if there is room for allocation */
-	memoryPointer -= sz + 2;
+	memoryPointer = (struct object *)
+	 (((uint *)memoryPointer) - (sz + 2));
 	if (memoryPointer < memoryBase) {
 		sysError("insufficient memory after garbage collection", sz);
 	}
-	memoryPointer->size =  sz << 2;
-	return memoryPointer;
+	memoryPointer->size = sz << 2;
+	return(memoryPointer);
 }
 
 /*
@@ -289,12 +291,13 @@ gcollect(int sz)
 struct object *
 staticAllocate(int sz)
 {
-	staticPointer -= sz + 2;
+	staticPointer = (struct object *)
+		(((uint *)staticPointer) - (sz + 2));
 	if (staticPointer < staticBase) {
 		sysError("insufficient static memory", 0);
 	}
 	staticPointer->size = sz << 2;
-	return staticPointer;
+	return(staticPointer);
 }
 
 struct object *
@@ -312,18 +315,19 @@ staticIAllocate(int sz)
 /*
 	if definition is not in-lined, here  is what it should be
 */
-# ifndef gcalloc
+#ifndef gcalloc
 struct object *
 gcalloc(int sz)
 {
 	struct object * result;
 
-	memoryPointer -= sz + 2;
+	memoryPointer = (struct object *)
+		(((uint *)memoryPointer) - (sz + 2));
 	if (memoryPointer < memoryBase) {
 		return gcollect(sz);
 	}
-	memoryPointer->size =  sz << 2;
-	return memoryPointer;
+	memoryPointer->size = sz << 2;
+	return(memoryPointer);
 }
 # endif
 

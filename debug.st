@@ -210,7 +210,7 @@ onBreak | ctx meth rec |
 		rec <- bpoints at: idx.
 		((rec at: 1) = meth) ifTrue: [
 			'Breakpoint ' print. idx print. ' hit in ' print.
-			meth name printString print. ':' print.
+			meth name printString print. '/' print.
 			(rec at: 2) printNl.
 			^ true
 		]
@@ -313,25 +313,48 @@ examine: args | ctx meth |
 	]
 !
 !Debug
-setBreak: args | s cl clname meth methname i rec lineNum |
+setBreak: args | s cl clname meth methname i rec lineNum inClass |
 	" Set the listed breakpoints "
 	args do: [:arg|
 		" Parse <class>:<method> "
-		s <- arg break: ':'.
+		s <- arg break: '/'.
 		(s size < 2) ifTrue: [
-			'Format is <class>:<method>' printNl
+			'Format is <class>/<method>' printNl
 		] ifFalse: [
 
-		clname <- (s at: 1) asSymbol.
+		" Look up in instance methods unless it's =<class>,
+		  in which case trim the '=' and look up in class
+		  methods."
+		clname <- s at: 1.
+		((clname at: 1) = $=) ifTrue: [
+			inClass <- true.
+			clname <- clname from: 2 to: clname size
+		] ifFalse: [
+			inClass <- false
+		].
+		clname <- clname asSymbol.
 		methname <- (s at: 2) asSymbol.
 
 		" TBD: break at line # "
-		lineNum <- 1.
+		(s size > 2) ifTrue: [
+			lineNum <- (s at: 3) asNumber.
+			lineNum isNil ifTrue: [
+				'Bad line #, defaulting to 1' printNl.
+				lineNum <- 1
+			]
+		] ifFalse: [
+			lineNum <- 1
+		].
 
 		" Find class "
 		cl <- Smalltalk at: clname ifAbsent: [
 			('Unknown class: ' + clname) printNl.
 			^ nil
+		].
+
+		" Convert to metaclass if needed "
+		inClass ifTrue: [
+			cl <- cl class
 		].
 
 		" Now get method, in its debuggable format "
@@ -378,7 +401,7 @@ listBreak | rec meth lineNum |
 		rec <- bpoints at: x.
 		meth <- rec at: 1.
 		lineNum <- rec at: 2.
-		meth name printString print. ':' print.
+		meth name printString print. '/' print.
 		lineNum printNl
 	]
 !

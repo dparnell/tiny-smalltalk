@@ -47,7 +47,7 @@ CLASS Link          Object            value next
 CLASS Node          Object            value left right
 CLASS Interval      Collection        low high step
 CLASS File          Object            fileID
-CLASS Association	Magnitude	value key
+CLASS Association	Magnitude	key value
 CLASS Tree		Collection	root
 COMMENT ---------- Classes having to do with parsing ------------
 CLASS Parser Object text index tokenType token argNames tempNames instNames maxTemps errBlock lineNum
@@ -186,6 +186,10 @@ basicSize
 METHOD Object
 subclassResponsibility
 	self error: 'Subclass responsibility'
+!
+METHOD Object
+basicDo: aBlock
+	^ self do: aBlock
 !
 COMMENT ---------Class-------------------
 METHOD Class
@@ -858,7 +862,7 @@ printString | count res |
 	(self respondsTo: #do:) ifFalse: [ ^ res ].
 	count <- 0.
 	res <- res + ' ('.
-	self do: [:elem| 
+	self basicDo: [:elem| 
 		(count = 0) ifFalse: [ res <- res + ' ' ].
 		res <- res + elem printString.
 		count <- count + 1.
@@ -1438,6 +1442,12 @@ new
 	^ self new: 10
 !
 METHOD Set
+size | tally |
+	tally <- 0.
+	members do: [:elem| elem notNil ifTrue: [ tally <- tally + 1 ] ].
+	^ tally
+!
+METHOD Set
 grow | bigger old oldsize |
 	" Re-create ourselves in place with a new, bigger storage "
 	old <- members.
@@ -1484,10 +1494,10 @@ add: elem | pos |
 		^ self add: elem
 	].
 
-	" If the slot is nil, this is a new entry which we put in place now "
-	((members at: pos) isNil) ifTrue: [
-		members at: pos put: elem
-	].
+	" If the slot is nil, this is a new entry which we put in place now.
+	  If it wasn't nil, we still re-store it so that if it's an
+	  Association, the value portion will be updated. "
+	members at: pos put: elem.
 	^ elem
 !
 METHOD Set
@@ -1993,9 +2003,12 @@ key: k
 	^ self in: self new at: 1 put: k
 !
 METHOD MetaAssociation
-key: k value: v
+key: k value: v | ret |
 		"key is set once, value is resettable"
-	^ (self in: self new at: 1 put: k) value: v
+	ret <- self new.
+	self in: ret at: 1 put: k.
+	self in: ret at: 2 put: v.
+	^ ret
 !
 METHOD Association
 = k
@@ -2022,6 +2035,14 @@ value
 METHOD Association
 key
 	^ key
+!
+METHOD Association
+hash
+	^ key hash
+!
+METHOD Association
+printString
+	^ '(' + key printString + ' -> ' + value printString + ')'
 !
 COMMENT ---------- Tree ------------
 METHOD Tree

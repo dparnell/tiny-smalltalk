@@ -29,7 +29,7 @@ extern int cacheMiss;
 
 
 extern struct object * nwInteger(int);
-# define newInteger(x) ((x<10)?smallInts[x]:nwInteger(x))
+# define newInteger(x) (((x)<10)?smallInts[x]:nwInteger(x))
 
 extern struct object * primitive(int, struct object *);
 
@@ -39,7 +39,8 @@ extern struct object * primitive(int, struct object *);
 
 struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
 	*SmallIntClass, *ArrayClass, *BlockClass, *ContextClass,
-	*globalsObject, *initialMethod, *binaryMessages[3];
+	*globalsObject, *initialMethod, *binaryMessages[3],
+	*IntegerClass;
 
 /*
  * Debugging
@@ -183,6 +184,78 @@ flushCache(void)
 				cache[i].name = 0;	/* force refill */
 		}
 	}
+}
+
+/*
+ * newLInteger()
+ *	Create new Integer (64-bit)
+ */
+static struct object *
+newLInteger(long long val)
+{
+	struct object *res;
+
+	/*
+	 * Channel our new objects through rootStack, as any of
+	 * these steps could trigger a GC.
+	 */
+	rootStack[rootTop++] = newInteger((int)(val >> 32));
+	rootStack[rootTop++] = newInteger((int)(val & 0xFFFFFFFF));
+	res = gcalloc(2);
+	res->class = IntegerClass;
+	res->data[0] = rootStack[--rootTop];
+	res->data[1] = rootStack[--rootTop];
+	return(res);
+}
+
+/*
+ * do_Integer()
+ *	Implement the appropriate 64-bit Integer operation
+ *
+ * Returns NULL on error, otherwise the resulting Integer or
+ * Boolean (for comparisons) object.
+ */
+static struct object *
+do_Integer(int op, struct object *low, struct object *high)
+{
+	long long l, h;
+
+	l = integerValue(low->data[0]) |
+		((long long)integerValue(low->data[1]) << 32);
+	h = integerValue(high->data[0]) |
+		((long long)integerValue(high->data[1]) << 32);
+	switch (op) {
+	case 25:	/* Integer division */
+		if (h == 0LL) {
+			return(NULL);
+		}
+		return(newLInteger(l/h));
+
+	case 26:	/* Integer remainder */
+		if (h == 0LL) {
+			return(NULL);
+		}
+		return(newLInteger(l%h));
+
+	case 27:	/* Integer addition */
+		return(newLInteger(l+h));
+
+	case 28:	/* Integer multiplication */
+		return(newLInteger(l*h));
+
+	case 29:	/* Integer subtraction */
+		return(newLInteger(l-h));
+
+	case 30:	/* Integer less than */
+		return((l < h) ? trueObject : falseObject);
+
+	case 31:	/* Integer equality */
+		return((l == h) ? trueObject : falseObject);
+
+	default:
+		sysError("Invalid op table jump", op);
+	}
+	return(NULL);
 }
 
 int
@@ -533,15 +606,15 @@ execute(struct object *aProcess)
 /*
  * Pull two integers of the required class as arguments from stack
  */
-#define GET_HIGH_LOW(cl) \
+#define GET_HIGH_LOW() \
 	op = stack->data[--stackTop]; \
-	if (op->class != cl) { \
+	if (op->class != SmallIntClass) { \
 		stackTop -= 1; \
 		goto failPrimitive; \
 	} \
 	low = integerValue(op); \
 	op = stack->data[--stackTop]; \
-	if (op->class != cl) { \
+	if (op->class != SmallIntClass) { \
 		goto failPrimitive; \
 	} \
 	high = integerValue(op);
@@ -655,13 +728,13 @@ execute(struct object *aProcess)
 				break;
 
 			case 10: 	/* small integer addition */
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				high += low;
 				returnedValue = newInteger(high);
 				break;
 				
 			case 11: 	/* small integer division */
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				if (low == 0) {
 					goto failPrimitive;
 				}
@@ -670,7 +743,7 @@ execute(struct object *aProcess)
 				break;
 				
 			case 12:	/* small integer remainder */ 
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				if (low == 0) {
 					goto failPrimitive;
 				}
@@ -679,7 +752,7 @@ execute(struct object *aProcess)
 				break;
 				
 			case 13:	/* small integer less than */ 
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				if (high < low) {
 					returnedValue = trueObject;
 				} else {
@@ -688,7 +761,7 @@ execute(struct object *aProcess)
 				break;
 
 			case 14:	/* small integer equality */ 
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				if (high == low) {
 					returnedValue = trueObject;
 				} else {
@@ -697,13 +770,13 @@ execute(struct object *aProcess)
 				break;
 
 			case 15:	/* small integer multiplication */ 
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				high *= low;
 				returnedValue = newInteger(high);
 				break;
 
 			case 16:	/* small integer subtraction */ 
-				GET_HIGH_LOW(SmallIntClass);
+				GET_HIGH_LOW();
 				if (low < high) {
 					high -= low;
 				} else {
@@ -775,6 +848,30 @@ execute(struct object *aProcess)
 				}
 				returnedValue = returnedValue->data[low];
 				break;
+#undef GET_HIGH_LOW
+
+			case 25:	/* Integer division */
+			case 26:	/* Integer remainder */
+			case 27:	/* Integer addition */
+			case 28:	/* Integer multiplication */
+			case 29:	/* Integer subtraction */
+			case 30:	/* Integer less than */
+			case 31:	/* Integer equality */
+				op = stack->data[--stackTop];
+				if (op->class != IntegerClass) {
+					stackTop -= 1;
+					goto failPrimitive;
+				}
+				returnedValue = stack->data[--stackTop];
+				if (returnedValue->class != IntegerClass) {
+					goto failPrimitive;
+				}
+				returnedValue = do_Integer(high,
+					returnedValue, op);
+				if (returnedValue == NULL) {
+					goto failPrimitive;
+				}
+				break;
 
 			default:
 					/* pop arguments, try primitive */
@@ -804,6 +901,7 @@ failPrimitive:
 		 * during the failed execution.  Supply a return value
 		 * for the failed primitive.
 		 */
+		returnedValue = nilObject;
  		if (context != rootStack[--rootTop]) {
  			context = rootStack[rootTop];
  			method = context->data[methodInContext];
@@ -819,7 +917,6 @@ endPrimitive:
 		 * Done with primitive, continue execution loop
 		 */
 		break;
-#undef GET_HIGH_LOW
 
             case DoSpecial:
 		DBG1("DoSpecial", low);

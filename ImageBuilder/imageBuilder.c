@@ -27,7 +27,8 @@ sysError(char * a, char * b)
 */
 
 static struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
-	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass;
+	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass,
+	*IntegerClass;
 
 static struct object * SymbolClass;
 
@@ -504,6 +505,9 @@ bigBang(void)
 
 	SmallIntClass = newClass("SmallInt");
 	addGlobalName("SmallInt", SmallIntClass);
+
+	IntegerClass = newClass("Integer");
+	addGlobalName("Integer", IntegerClass);
 
 
 	for (i = 0; i < 10; i++) {
@@ -1675,6 +1679,7 @@ main(void)
 	imageOut(fd, falseObject);
 	imageOut(fd, globalValues);
 	imageOut(fd, SmallIntClass);
+	imageOut(fd, IntegerClass);
 	imageOut(fd, ArrayClass);
 	imageOut(fd, BlockClass);
 	imageOut(fd, lookupGlobal("Context", 0));

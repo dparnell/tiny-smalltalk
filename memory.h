@@ -82,29 +82,20 @@ extern void addStaticRoot(struct object **);
 	The following are roots for the file out 
 */
 
-extern struct object * nilObject;
-extern struct object * smallInts[10];
-extern struct object * trueObject;
-extern struct object * falseObject;
-extern struct object * SmallIntClass;
-extern struct object * ArrayClass;
-extern struct object * BlockClass;
-extern struct object * ContextClass;
-extern struct object * globalsObject;
-extern struct object * initialMethod;
-extern struct object * binaryMessages[3];
+extern struct object *nilObject, *smallInts[10], *trueObject,
+	*falseObject, *SmallIntClass, *ArrayClass, *BlockClass,
+	*ContextClass, *globalsObject, *initialMethod,
+	*binaryMessages[3], *IntegerClass;
 
 /*
 	entry points
 */
 
-void gcinit(int, int);
-struct object * gcollect(int);
-struct object * staticAllocate(int);
-struct object * staticIAllocate(int);
-struct object * gcialloc(int);
+extern void gcinit(int, int);
+extern struct object *gcollect(int), *staticAllocate(int),
+	*staticIAllocate(int), *gcialloc(int);
 
-int isDynamicMemory(struct object *);
+extern int isDynamicMemory(struct object *);
 
 # define gcalloc(sz) (((memoryPointer-=(sz+1))<memoryBase)?\
 	gcollect(sz):(memoryPointer->size=sz<<2,memoryPointer))

@@ -427,6 +427,7 @@ fileIn(FILE * fp)
 	falseObject = objectRead(fp);
 	globalsObject = objectRead(fp);
 	SmallIntClass = objectRead(fp);
+	IntegerClass = objectRead(fp);
 	ArrayClass = objectRead(fp);
 	BlockClass = objectRead(fp);
 	ContextClass = objectRead(fp);

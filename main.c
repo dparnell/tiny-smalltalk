@@ -19,6 +19,7 @@
 # define DefaultImageFile "ImageBuilder/image"
 # define DefaultStaticSize 40000
 # define DefaultDynamicSize 40000
+# define DefaultTmpdir "/tmp"
 
 /*
 --------------------
@@ -34,14 +35,17 @@ int debugging = 0;
 int cacheHit = 0;
 int cacheMiss = 0;
 int gccount = 0;
+static char *tmpdir = DefaultTmpdir;
 
-void sysError(char * a, int b)
+void
+sysError(char * a, int b)
 {
 	fprintf(stderr,"unrecoverable system error: %s %d\n", a, b);
 	exit(1);
 }
 
-struct object * nwInteger(unsigned int v)
+struct object *
+nwInteger(unsigned int v)
 {
 	register struct integerObject * n;
 
@@ -96,11 +100,19 @@ main(int argc, char ** argv)
 	struct object *aProcess, *aContext, *o;
 	int size, i, staticSize, dynamicSize;
 	FILE *fp;
-	char imageFileName[120];
+	char imageFileName[120], *p;
 
 	strcpy(imageFileName, DefaultImageFile);
 	staticSize = DefaultStaticSize;
 	dynamicSize = DefaultDynamicSize;
+
+	/*
+	 * See if our environment tells us what TMPDIR to use
+	 */
+	p = getenv("TMPDIR");
+	if (p) {
+		tmpdir = strdup(p);
+	}
 
 	/* first parse arguments */
 	for (i = 1; i < argc; i++) {
@@ -203,91 +215,95 @@ getUnixString(char * to, int size, struct object * from)
 	to[i] = '\0';	/* put null terminator at end */
 }
 
-struct object * primitive(int primitiveNumber, struct object * args)
-{	struct object * returnedValue = nilObject;
+struct object *
+primitive(int primitiveNumber, struct object * args)
+{
+	struct object * returnedValue = nilObject;
 	int i, j;
 	FILE * fp;
 	char * p;
 	struct byteObject * stringReturn;
-	char nameBuffer[80];
-	char modeBuffer[80];
+	char nameBuffer[80], modeBuffer[80];
 
 	switch(primitiveNumber) {
-		case 30: 	/* open a file */
-			getUnixString(nameBuffer, 80, args->data[0]);
-			getUnixString(modeBuffer, 10, args->data[1]);
-			fp = fopen(nameBuffer, modeBuffer);
-			if (fp != NULL) {
-				if (fileTop + 1 >= FILEMAX)
-					sysError("too many open files", 0);
-				returnedValue = nwInteger(fileTop);
-				filePointers[fileTop++] = fp;
-				}
-			break;
-
-		case 31:	/* read a single character from a file */
-			i = integerValue(args->data[0]);
-			i = fgetc(filePointers[i]);
-			if (i != EOF)
-				returnedValue = nwInteger(i);
-			break;
-
-		case 32:	/* write a single character to a file */
-			fputc(integerValue(args->data[1]),
-				filePointers[integerValue(args->data[0])]);
-			break;
-
-		case 33:	/* close file */
-			i = integerValue(args->data[0]);
-			fclose(filePointers[i]);
-			if (i+1 == fileTop)
-				fileTop--;
-			break;
-
-		case 34:	/* file out image */
-			i = integerValue(args->data[0]);
-			fileOut(filePointers[i]);
-			break;
-
-		case 35:	/* edit a string */
-				/* first get the name of a temp file */
-			strcpy(nameBuffer, "/usr/tmp/lsteditXXXXXX");
-			mktemp(nameBuffer);
-				/* copy string to file */
-			fp = fopen(nameBuffer, "w");
-			if (fp == NULL) 
-				sysError("cannot open temp edit file", 0);
-			j = args->data[0]->size >> 2;
-			p = ((struct byteObject *) args->data[0])->bytes;
-			for (i = 0; i < j; i++)
-				fputc(*p++, fp);
-			fputc('\n', fp);
-			fclose(fp);
-				/* edit string */
-			strcpy(modeBuffer,"vi ");
-			strcat(modeBuffer,nameBuffer);
-			system(modeBuffer);
-				/* copy back to new string */
-			fp = fopen(nameBuffer, "r");
-			if (fp == NULL) 
-				sysError("cannot open temp edit file", 0);
-				/* get length of file */
-			fseek(fp, 0, 2);
-			j = (int) ftell(fp);
-			returnedValue = 
-				(struct object *) stringReturn = gcialloc(j);
-			returnedValue->class = args->data[0]->class;
-				/* reset to beginning, and read values */
-			fseek(fp, 0, 0);
-			for (i = 0; i < j; i++)
-				stringReturn->bytes[i] = fgetc(fp);
-				/* now clean up files */
-			fclose(fp);
-			unlink(nameBuffer);
-			break;
-
-		default:
-			sysError("unknown primitive", primitiveNumber);
+	case 30: 	/* open a file */
+		getUnixString(nameBuffer, 80, args->data[0]);
+		getUnixString(modeBuffer, 10, args->data[1]);
+		fp = fopen(nameBuffer, modeBuffer);
+		if (fp != NULL) {
+			if (fileTop + 1 >= FILEMAX) {
+				sysError("too many open files", 0);
+			}
+			returnedValue = nwInteger(fileTop);
+			filePointers[fileTop++] = fp;
 		}
+		break;
+
+	case 31:	/* read a single character from a file */
+		i = integerValue(args->data[0]);
+		i = fgetc(filePointers[i]);
+		if (i != EOF) {
+			returnedValue = nwInteger(i);
+		}
+		break;
+
+	case 32:	/* write a single character to a file */
+		fputc(integerValue(args->data[1]),
+			filePointers[integerValue(args->data[0])]);
+		break;
+
+	case 33:	/* close file */
+		i = integerValue(args->data[0]);
+		fclose(filePointers[i]);
+		if (i+1 == fileTop) {
+			fileTop--;
+		}
+		break;
+
+	case 34:	/* file out image */
+		i = integerValue(args->data[0]);
+		fileOut(filePointers[i]);
+		break;
+
+	case 35:	/* edit a string */
+			/* first get the name of a temp file */
+		sprintf(nameBuffer, "%s/lsteditXXXXXX", tmpdir);
+		mktemp(nameBuffer);
+			/* copy string to file */
+		fp = fopen(nameBuffer, "w");
+		if (fp == NULL) 
+			sysError("cannot open temp edit file", 0);
+		j = args->data[0]->size >> 2;
+		p = ((struct byteObject *) args->data[0])->bytes;
+		for (i = 0; i < j; i++)
+			fputc(*p++, fp);
+		fputc('\n', fp);
+		fclose(fp);
+			/* edit string */
+		strcpy(modeBuffer,"vi ");
+		strcat(modeBuffer,nameBuffer);
+		system(modeBuffer);
+			/* copy back to new string */
+		fp = fopen(nameBuffer, "r");
+		if (fp == NULL) 
+			sysError("cannot open temp edit file", 0);
+			/* get length of file */
+		fseek(fp, 0, 2);
+		j = (int) ftell(fp);
+		returnedValue = 
+			(struct object *) stringReturn = gcialloc(j);
+		returnedValue->class = args->data[0]->class;
+			/* reset to beginning, and read values */
+		fseek(fp, 0, 0);
+		for (i = 0; i < j; i++)
+			stringReturn->bytes[i] = fgetc(fp);
+			/* now clean up files */
+		fclose(fp);
+		unlink(nameBuffer);
+		break;
+
+	default:
+		sysError("unknown primitive", primitiveNumber);
+	}
 	return returnedValue;
 }

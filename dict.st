@@ -4,7 +4,7 @@
 at: key ifAbsent: aBlock | pos assoc |
 	pos <- self location: key.
 	((pos isNil) or: [(assoc <- members at: pos) isNil]) ifTrue: [
-		aBlock value
+		^ aBlock value
 	].
 	^ assoc value
 !

@@ -210,7 +210,7 @@ getUnixString(char * to, int size, struct object * from)
 struct object *
 primitive(int primitiveNumber, struct object * args)
 {
-	struct object * returnedValue = nilObject;
+	struct object *returnedValue = nilObject;
 	int i, j;
 	FILE * fp;
 	char * p;
@@ -232,7 +232,13 @@ primitive(int primitiveNumber, struct object * args)
 		break;
 
 	case 101:	/* read a single character from a file */
+		if (!IS_SMALLINT(args->data[0])) {
+			break;
+		}
 		i = integerValue(args->data[0]);
+		if ((i < 0) || (i >= FILEMAX)) {
+			break;
+		}
 		i = fgetc(filePointers[i]);
 		if (i != EOF) {
 			returnedValue = newInteger(i);
@@ -240,12 +246,25 @@ primitive(int primitiveNumber, struct object * args)
 		break;
 
 	case 102:	/* write a single character to a file */
-		fputc(integerValue(args->data[1]),
-			filePointers[integerValue(args->data[0])]);
+		if (!IS_SMALLINT(args->data[0])
+				|| !IS_SMALLINT(args->data[1])) {
+			break;
+		}
+		i = integerValue(args->data[0]);
+		if ((i < 0) || (i >= FILEMAX)) {
+			break;
+		}
+		fputc(integerValue(args->data[1]), filePointers[i]);
 		break;
 
 	case 103:	/* close file */
+		if (!IS_SMALLINT(args->data[0])) {
+			break;
+		}
 		i = integerValue(args->data[0]);
+		if ((i < 0) || (i >= FILEMAX)) {
+			break;
+		}
 		fclose(filePointers[i]);
 		if (i+1 == fileTop) {
 			fileTop--;

@@ -204,7 +204,7 @@ readIdentifier()
 	char *q = tokenBuffer;
 	while (isIdentifierChar(*p) || isDigit(*p)) *q++ = *p++;
 	*q = '\0';
-	if (*p == ':') {	/* its a keyword identifier */
+	if (*p == ':') {	/* It's a keyword identifier */
 		keyflag = 1;
 		*q++ = ':';
 		*q = '\0';
@@ -395,7 +395,7 @@ static struct object * litBuffer[LiteralBufferTop];
 static unsigned litTop = 0;
 
 static int
-addLiteral(struct object * a)
+addLiteral(struct object *a)
 {
 	litBuffer[litTop++] = a;
 	if (litTop >= LiteralBufferTop) {
@@ -459,7 +459,8 @@ bigBang(void)
 {
 	struct object *ObjectClass, *MetaObjectClass, *ClassClass,
 		*NilClass, *TrueClass, *FalseClass, *StringClass,
-		*TreeClass, *DictionaryClass, *OrderedArrayClass;
+		*TreeClass, *DictionaryClass, *OrderedArrayClass,
+		*MetaClassClass;
 
 	/*
 	 * First, make the nil (undefined) object;
@@ -489,10 +490,14 @@ bigBang(void)
 	ObjectClass->class = MetaObjectClass;
 	ObjectClass->data[parentClassInClass] = nilObject;
 
-	/* now make up a bunch of other classes */
+	/* And the Class/MetaClass mess */
 	ClassClass = newClass("Class");
 	addGlobalName("Class", ClassClass);
+	MetaClassClass = newClass("MetaClass");
+	addGlobalName("MetaClass", MetaClassClass);
+	ClassClass->class = MetaClassClass;
 
+	/* now make up a bunch of other classes */
 	BlockClass = newClass("Block");
 	addGlobalName("Block", BlockClass);
 
@@ -622,33 +627,36 @@ parseString(void)
 }
 
 int
-lookupInstance(struct object * class, char * text, int * low)
+lookupInstance(struct object *class, char *text, int *low)
 {
 	struct object *var;
 	int size, i;
 
-	/* first check superclasses */
-	var = class->data[parentClassInClass];
-	if (var && var != nilObject) {
-		size = lookupInstance(var, text, low);
-		if (size >= 0) return size;
-		}
-	else	/* no superclass */
-		*low = 0;
 
-	/* now check vars */
+ 	/* first check superclasses */
+ 	var = class->data[parentClassInClass];
+ 	if (var && var != nilObject) {
+ 		size = lookupInstance(var, text, low);
+ 		if (size >= 0) return size;
+	} else {	/* no superclass */
+ 		*low = 0;
+	}
+ 
+	/* Check our own list of variables */
 	var = class->data[variablesInClass];
-	if (var && var != nilObject)
+	if (var && var != nilObject) {
 		size = var->size >> 2;
-	else
+	} else {
 		size = 0;
+	}
 	for (i = 0; i < size; i++) {
 		if (symbolBareCmp(text, strlen(text),
-			bytePtr(var->data[i]), (var->data[i])->size >> 2) ==  0)
-			return *low;
-		*low += 1;
+		 bytePtr(var->data[i]), (var->data[i])->size >> 2) == 0) {
+			return(*low);
 		}
-	return -1;
+		*low += 1;
+	}
+	return(-1);
 }
 
 static int superMessage = 0;
@@ -1418,19 +1426,25 @@ ClassCommand(void)
 
 	/* rest are instance variables */
 	litTop = 0;
+
+	/* Now parse the new instance variables */
 	while (*p) {
-		if (! isIdentifierChar(*p)) {
+		if (!isIdentifierChar(*p)) {
 			sysError("looking for var", p);
 		}
 		readIdentifier();
 		addLiteral(newSymbol(tokenBuffer));
 	}
 
+	/* That's the total of our instance variables */
 	instsize = litTop;
-	if (supClass != nilObject) {
-		instsize +=
-			integerValue(supClass->data[instanceSizeInClass]);
-	}
+
+	/* Add on size of superclass space */
+ 	if (supClass != nilObject) {
+ 		instsize +=
+ 			integerValue(supClass->data[instanceSizeInClass]);
+ 	}
+
 	nClass->data[instanceSizeInClass] = newInteger(instsize);
 	nClass->data[variablesInClass] = buildLiteralArray();
 			/* make a tree for new methods */

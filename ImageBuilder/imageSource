@@ -192,7 +192,7 @@ subclasses: indent
 	globals do: [ :obj |
 		((obj isKindOf: Class) and: [ obj superclass == self])
 			ifTrue: [
-				1 to: indent do: [$  print ].
+				1 to: indent do: [:ignore| $  print ].
 				obj print. Char newline print.
 				obj subclasses: indent + 4 ] ]
 !
@@ -972,7 +972,7 @@ METHOD String
 printWidth: width | ret |
 	(self size >= width) ifTrue: [ ^ self ].
 	ret <- self.
-	(self size + 1) to: width do: [ ret <- ret + ' ' ].
+	(self size + 1) to: width do: [:ignore| ret <- ret + ' ' ].
 	^ret
 !
 METHOD String

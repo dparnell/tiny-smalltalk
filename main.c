@@ -229,7 +229,7 @@ primitive(int primitiveNumber, struct object * args)
 	char nameBuffer[80], modeBuffer[80];
 
 	switch(primitiveNumber) {
-	case 30: 	/* open a file */
+	case 100: 	/* open a file */
 		getUnixString(nameBuffer, 80, args->data[0]);
 		getUnixString(modeBuffer, 10, args->data[1]);
 		fp = fopen(nameBuffer, modeBuffer);
@@ -242,7 +242,7 @@ primitive(int primitiveNumber, struct object * args)
 		}
 		break;
 
-	case 31:	/* read a single character from a file */
+	case 101:	/* read a single character from a file */
 		i = integerValue(args->data[0]);
 		i = fgetc(filePointers[i]);
 		if (i != EOF) {
@@ -250,12 +250,12 @@ primitive(int primitiveNumber, struct object * args)
 		}
 		break;
 
-	case 32:	/* write a single character to a file */
+	case 102:	/* write a single character to a file */
 		fputc(integerValue(args->data[1]),
 			filePointers[integerValue(args->data[0])]);
 		break;
 
-	case 33:	/* close file */
+	case 103:	/* close file */
 		i = integerValue(args->data[0]);
 		fclose(filePointers[i]);
 		if (i+1 == fileTop) {
@@ -263,12 +263,12 @@ primitive(int primitiveNumber, struct object * args)
 		}
 		break;
 
-	case 34:	/* file out image */
+	case 104:	/* file out image */
 		i = integerValue(args->data[0]);
 		fileOut(filePointers[i]);
 		break;
 
-	case 35:	/* edit a string */
+	case 105:	/* edit a string */
 			/* first get the name of a temp file */
 		sprintf(nameBuffer, "%s/lsteditXXXXXX", tmpdir);
 		mktemp(nameBuffer);

@@ -520,8 +520,10 @@ bigBang(void)
 	BlockClass = newClass("Block");
 	addGlobalName("Block", BlockClass);
 
-	SmallIntClass = newClass("SmallInt");
+	/* SmallInt has an extra class variable, just like Symbol */
+	SmallIntClass = gcalloc(ClassSize + 1);
 	addGlobalName("SmallInt", SmallIntClass);
+	SmallIntClass->data[nameInClass] = newSymbol("SmallInt");
 
 	IntegerClass = newClass("Integer");
 	addGlobalName("Integer", IntegerClass);

@@ -8,7 +8,9 @@
 */
 
 # include <stdio.h>
+# include <stdlib.h>
 # include "memory.h"
+# include "globs.h"
 
 extern int debugging;	/* true if we are debugging */
 
@@ -64,13 +66,13 @@ int isDynamicMemory(struct object * x)
 void gcinit(int staticsz, int dynamicsz)
 {
 		/* allocate the memory areas */
-	staticBase = (struct object *) 
+	staticBase = (struct object *)
 		malloc(staticsz * sizeof(struct object));
-	spaceOne = (struct object *) 
+	spaceOne = (struct object *)
 		malloc(dynamicsz * sizeof(struct object));
-	spaceTwo = (struct object *) 
+	spaceTwo = (struct object *)
 		malloc(dynamicsz * sizeof(struct object));
-	if ((staticBase == 0) || (spaceOne == 0) || (spaceTwo == 0)) 
+	if ((staticBase == 0) || (spaceOne == 0) || (spaceTwo == 0))
 		sysError("not enough memory for space allocations\n", 0);
 
 	staticTop = staticBase + staticsz;
@@ -79,10 +81,12 @@ void gcinit(int staticsz, int dynamicsz)
 	spaceSize = dynamicsz;
 	memoryBase = spaceOne;
 	memoryPointer = memoryBase + spaceSize;
-	if (debugging)
-		printf("space one %d, top %d , space two %d , top %d \n", 
-			spaceOne, spaceOne + spaceSize, 
-			spaceTwo, spaceTwo + spaceSize);
+	if (debugging) {
+		printf("space one 0x%x, top 0x%x,"
+				" space two 0x%x , top 0x%x\n",
+			(uint)spaceOne, (uint)(spaceOne + spaceSize),
+			(uint)spaceTwo, (uint)(spaceTwo + spaceSize));
+	}
 	inSpaceOne = 1;
 }
 
@@ -111,16 +115,16 @@ static struct object * gc_move(struct mobject * ptr)
 			keep stacking objects to be moved until we find
 			one that we can handle */
 		while (1) {
-		/* if we find a pointer in the current space 
+		/* if we find a pointer in the current space
 			to the new space (other than indirections) then
 			something is very wrong */
-		if ((old_address >= (struct mobject *) memoryBase) 
+		if ((old_address >= (struct mobject *) memoryBase)
 			&& (old_address <= (struct mobject *) memoryTop)) {
 			sysError("GC invariant failure -- address in new space",
-					old_address);
+					(int)old_address);
 			}
 				/* else see if not  in old space */
-			if ((old_address < (struct mobject *) oldBase) || 
+			if ((old_address < (struct mobject *) oldBase) ||
 					(old_address > (struct mobject *) oldTop)) {
 				replacement = old_address;
 				old_address = previous_object;
@@ -169,7 +173,7 @@ static struct object * gc_move(struct mobject * ptr)
 			}
 		}
 
-		/* part 2.  Fix up pointers, 
+		/* part 2.  Fix up pointers,
 			move back up tree as long as possible
 			old_address points to an object in the old space,
 			which in turns points to an object in the new space,
@@ -196,7 +200,7 @@ static struct object * gc_move(struct mobject * ptr)
 				previous_object = new_address->data[sz];
 				new_address->data[sz] = replacement;
 				sz--;
-					/* quick cheat for recovering 
+					/* quick cheat for recovering
 						zero fields */
 				while (sz && (old_address->data[sz] == 0))
 					sz--;
@@ -292,7 +296,7 @@ struct object * gcalloc(int sz)
 		return gcollect(sz);
 		}
 	memoryPointer->size =  sz << 2;
-	return memoryPointer; 
+	return memoryPointer;
 }
 # endif
 
@@ -326,20 +330,19 @@ unsigned int readWord(FILE * fp)
 		return i;
 }
 
-static struct object * objectRead(FILE * fp)
+static struct object *
+objectRead(FILE * fp)
 {
-	int type;
-	int size;
-	int i;
-	struct object * newObj;
-	struct integerObject * inewObj;
-	struct byteObject * bnewObj;
+	int type, size, i;
+	struct object *newObj = 0;
+	struct integerObject *inewObj;
+	struct byteObject *bnewObj;
 
 	type = readWord(fp);
 
-	switch(type) {
+	switch (type) {
 		case 0:	/* nil obj */
-			sysError("read in a null object", newObj);
+			sysError("read in a null object", (int)newObj);
 
 		case 1:	/* ordinary object */
 			size = readWord(fp);
@@ -437,7 +440,7 @@ static void objectWrite(FILE * fp, struct object * obj)
 
 
 	if (obj == 0) {
-		sysError("writing out a null object", obj);
+		sysError("writing out a null object", (int)obj);
 		}
 
 			/* see if already written */

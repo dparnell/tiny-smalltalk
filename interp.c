@@ -20,6 +20,7 @@
 
 # include "memory.h"
 # include "interp.h"
+# include "globs.h"
 # include <stdio.h>
 
 extern int debugging;
@@ -117,12 +118,7 @@ static int symbolcomp(struct object * left, struct object * right)
 static struct object * lookupMethod
 	(struct object * selector, struct object * class)
 {
-	struct object * dict;
-	struct object * tree;
-	struct object * node;
-	struct object * aMeth;
-	struct object * symb;
-	struct object * anAssoc;
+	struct object *dict, *tree, *node, *symb, *anAssoc;
 
 	for ( ; class != nilObject; class = class->data[parentClassInClass]) {
 		dict = class->data[methodsInClass];
@@ -154,13 +150,19 @@ static struct {
 	struct object * method;
 	} cache[cacheSize];
 
-void flushCache() {	/* flush dynamic methods when GC occurs */
+/* flush dynamic methods when GC occurs */
+void
+flushCache(void)
+{
 	int i;
-	for (i = 0; i < cacheSize; i++)
+
+	for (i = 0; i < cacheSize; i++) {
 		if (isDynamicMemory(cache[i].method)
 			|| isDynamicMemory(cache[i].class)
-			|| isDynamicMemory(cache[i].name))
+			|| isDynamicMemory(cache[i].name)) {
 				cache[i].name = 0;	/* force refill */
+		}
+	}
 }
 
 int execute (struct object * aProcess)
@@ -175,7 +177,7 @@ int execute (struct object * aProcess)
     struct object * literals;
     register struct object * stack;
 
-    struct object * returnedValue;
+    struct object * returnedValue = nilObject;
     struct object * messageSelector;
     struct object * receiverClass;
 
@@ -381,7 +383,6 @@ int execute (struct object * aProcess)
 			cache[low].method = method;
 			}
 
-	      buildContextFromMethod:
 			/* see if we can optimize tail call */
 		if (bp[bytePointer] == (DoSpecial * 16 + StackReturn))
 			high = 1;

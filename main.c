@@ -7,6 +7,10 @@
 	starting point, primitive handler for unix
 	version of the little smalltalk system
 */
+#include <string.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include "globs.h"
 
 /*
 	the following defaults must be set

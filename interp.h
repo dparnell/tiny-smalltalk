@@ -47,6 +47,13 @@ int execute(struct object *aProcess, int ticks);
 # define trueConst 11
 # define falseConst 12
 
+/* Return values from doExecute: primitive */
+#define ReturnError 2		/* error: called */
+#define ReturnBadMethod 3	/* Unknown method for object */
+#define ReturnReturned 4	/* Top level method returned */
+#define ReturnTimeExpired 5	/* Time quantum exhausted */
+#define ReturnBreak 6		/* Breakpoint instruction */
+
 /*
 	The following are the objects with ``hard-wired'' 
 	field offsets

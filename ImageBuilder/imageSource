@@ -561,7 +561,9 @@ METHOD MetaChar
 input	| c |
 	" read a single char from input stream "
 	c <- <9>.
-	^ c notNil ifTrue: [ self new: c ]
+	(c notNil)
+		ifTrue: [ ^self new: c ]
+		ifFalse: [ ^nil ]
 !
 METHOD Char
 value
@@ -2178,3 +2180,32 @@ genCode: byte
 	byteCodes at: index put: byte.
 	^ index
 !
+METHOD Encoder
+expandByteCodes	| newarray size |
+	size <- byteCodes size.
+	newarray <- ByteArray new: size + 8.
+	1 to: size do: [:i | newarray at: i put: (byteCodes at: i)].
+	byteCodes <- newarray
+!
+METHOD Encoder
+patch: loc
+		" patch a goto from a block "
+	byteCodes at: loc put: index
+!
+METHOD Encoder
+currentLocation
+	^ index
+!
+METHOD Encoder
+backUp
+	" back up one instruction "
+	index <- index - 1
+!
+METHOD Encoder
+method: maxTemps class: c text: text
+	^ Method name: name byteCodes: byteCodes literals: literals 
+		stackSize: maxStack temporarySize: maxTemps class: c
+		text: text
+!
+BEGIN nil main
+END

@@ -1378,7 +1378,7 @@ MethodCommand(void)
 }
 
 static void
-ClassCommand(void)
+RawClassCommand(void)
 {
 	struct object *nClass, *supClass, *instClass;
 	int instsize;
@@ -1434,6 +1434,41 @@ ClassCommand(void)
 	nClass->data[variablesInClass] = buildLiteralArray();
 			/* make a tree for new methods */
 	nClass->data[methodsInClass] = newDictionary();
+}
+
+/*
+ * ClassCommand()
+ *	Build the base and meta classes automatically
+ *
+ * Doesn't support class variables, but handles most of imageSource
+ * cases.
+ */
+static void
+ClassCommand(void)
+{
+	char *class, *super, *ivars;
+
+	/* Read the class and superclass */
+	readIdentifier();
+	class = strdup(tokenBuffer);
+	readIdentifier();
+	super = strdup(tokenBuffer);
+
+	/* Stash away the instance variable string */
+	skipSpaces();
+	ivars = strdup(p);
+
+	/* Build the metaclass */
+	sprintf(inputBuffer, "RAWCLASS Meta%s Class Meta%s", class, super);
+	p = inputBuffer + 9;
+	RawClassCommand();
+
+	/* Now the instance class */
+	sprintf(inputBuffer, "RAWCLASS %s Meta%s %s %s", class, class,
+		super, ivars);
+	p = inputBuffer + 9;
+	RawClassCommand();
+	free(class); free(super); free(ivars);
 }
 
 /* ------------------------------------------------------------- */
@@ -1634,6 +1669,8 @@ main(void)
 
 		if (strcmp(tokenBuffer, "BEGIN") == 0) {
 			bootMethod = BeginCommand();
+		} else if (strcmp(tokenBuffer, "RAWCLASS") == 0) {
+			RawClassCommand();
 		} else if (strcmp(tokenBuffer, "CLASS") == 0) {
 			ClassCommand();
 		} else if (strcmp(tokenBuffer, "COMMENT") == 0) {

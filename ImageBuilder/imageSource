@@ -4,96 +4,62 @@ COMMENT
 COMMENT		must be compiled by the image builder
 COMMENT	
 COMMENT-----------------------------------------------------------
+COMMENT RAWCLASS name   instanceOf subclassOf  (instance variable names)
+COMMENT  or... CLASS name subclassOf (instance vars)
+COMMENT RAWCLASS doesn't automatically build Meta class; CLASS does
+COMMENT-----------------------------------------------------------
 COMMENT		The strange circular world at the beginning
-COMMENT CLASS name   instanceOf subclassOf  (instance variable names)
-COMMENT CLASS Object MetaObject nil
-CLASS Class      MetaClass Object      name parentClass methods size variables
-CLASS MetaObject Class     Class
-CLASS MetaClass  Class     MetaObject
+COMMENT RAWCLASS Object MetaObject nil
+RAWCLASS Class      MetaClass Object      name parentClass methods size variables
+RAWCLASS MetaObject Class     Class
+RAWCLASS MetaClass  Class     MetaObject
 COMMENT--------------------------------------------------------
 COMMENT-------then, the remaining classes in the initial image
 COMMENT----------------------------
-CLASS MetaUndefined Class         MetaObject
-CLASS Undefined     MetaUndefined Object
-CLASS MetaBoolean   Class         MetaObject
-CLASS Boolean       MetaBoolean   Object
-CLASS MetaTrue      Class         MetaBoolean
-CLASS True          MetaTrue      Boolean
-CLASS MetaFalse     Class         MetaBoolean
-CLASS False         MetaFalse     Boolean
-CLASS MetaProcess   Class         MetaObject
-CLASS Process       MetaProcess   Object context state result
-CLASS MetaContext   Class         MetaObject
-CLASS Context       MetaContext   Object method arguments temporaries stack bytePointer stackTop previousContext
-CLASS MetaBlock     Class         MetaContext
-CLASS Block         MetaBlock     Context argumentLocation creatingContext oldBytePointer
-CLASS MetaMethod    Class         MetaObject
-CLASS Method        MetaMethod    Object name byteCodes literals stackSize temporarySize class text
-CLASS MetaMagnitude Class         MetaObject
-CLASS Magnitude     MetaMagnitude Object
-CLASS MetaSymbol    Class         MetaMagnitude     symbols
-CLASS Symbol        MetaSymbol    Magnitude
-CLASS MetaChar      Class         MetaMagnitude
-CLASS Char          MetaChar      Magnitude          value
-CLASS MetaCollection Class        MetaMagnitude
-CLASS Collection    MetaCollection Magnitude
-CLASS MetaList      Class         MetaCollection
-CLASS List          MetaList      Collection         elements
-CLASS MetaDictionary Class         MetaCollection
-CLASS Dictionary    MetaDictionary Collection        keys values
-CLASS MetaArray     Class         MetaCollection
-CLASS Array         MetaArray     Collection
-CLASS MetaOrderedArray     Class  MetaArray
-CLASS OrderedArray  MetaOrderedArray  Array
-CLASS MetaByteArray Class         MetaArray
-CLASS ByteArray     MetaByteArray Array
+CLASS Undefined     Object
+CLASS Boolean       Object
+CLASS True          Boolean
+CLASS False         Boolean
+CLASS Process       Object context state result
+CLASS Context       Object method arguments temporaries stack bytePointer stackTop previousContext
+CLASS Block         Context argumentLocation creatingContext oldBytePointer
+CLASS Method        Object name byteCodes literals stackSize temporarySize class text
+CLASS Magnitude     Object
+RAWCLASS MetaSymbol    Class         MetaMagnitude     symbols
+RAWCLASS Symbol        MetaSymbol    Magnitude
+CLASS Char          Magnitude          value
+CLASS Collection    Magnitude
+CLASS List          Collection         elements
+CLASS Dictionary    Collection        keys values
+CLASS Array         Collection
+CLASS OrderedArray  Array
+CLASS ByteArray     Array
 CLASS MetaString    Class         MetaArray
-CLASS String        MetaString    Array
-CLASS MetaNumber   Class         MetaObject
-CLASS Number       MetaNumber   Magnitude
-CLASS MetaInteger   Class         MetaObject
-CLASS Integer       MetaInteger   Number
-CLASS MetaSmallInt  Class         MetaNumber
-CLASS SmallInt      MetaSmallInt  Number
-CLASS MetaLink      Class         MetaObject
-CLASS Link          MetaLink      Object            value next
-CLASS MetaNode      Class         MetaObject
-CLASS Node          MetaNode      Object            value left right
-CLASS MetaInterval  Class         MetaCollection
-CLASS Interval      MetaInterval  Collection        low high step
-CLASS MetaFile      Class         MetaObject
-CLASS File          MetaFile      Object            fileID
-CLASS MetaAssociation	Class		MetaObject
-CLASS Association	MetaAssociation	Magnitude	value key
-CLASS MetaTree		Class		MetaObject
-CLASS Tree		MetaTree	Collection	root
+CLASS String        Array
+CLASS Number        Magnitude
+CLASS Integer       Number
+CLASS SmallInt      Number
+CLASS Link          Object            value next
+CLASS Node          Object            value left right
+CLASS Interval      Collection        low high step
+CLASS File          Object            fileID
+CLASS Association	Magnitude	value key
+CLASS Tree		Collection	root
 COMMENT ---------- Classes having to do with parsing ------------
-CLASS Parser Class Object text index tokenType token argNames tempNames instNames maxTemps errBlock lineNum
-CLASS MetaParserNode Class MetaObject
-CLASS ParserNode MetaParserNode Object lineNum
-CLASS Encoder Class Object name byteCodes index literals stackSize maxStack
-CLASS MetaBodyNode Class MetaParserNode
-CLASS BodyNode MetaBodyNode ParserNode statements
-CLASS MetaReturnNode Class MetaParserNode
-CLASS ReturnNode MetaReturnNode ParserNode expression
-CLASS MetaAssignNode Class MetaParserNode
-CLASS AssignNode MetaAssignNode ParserNode target expression
-CLASS MetaLiteralNode Class MetaParserNode
-CLASS LiteralNode MetaLiteralNode ParserNode value
-CLASS MetaArgumentNode Class MetaParserNode
-CLASS ArgumentNode MetaArgumentNode ParserNode position
-CLASS MetaTemporaryNode Class MetaParserNode
-CLASS TemporaryNode MetaTemporaryNode ParserNode position
-CLASS MetaInstNode Class MetaParserNode
-CLASS InstNode MetaInstNode ParserNode position
-CLASS MetaPrimitiveNode Class MetaParserNode
-CLASS PrimitiveNode MetaPrimitiveNode ParserNode number arguments
-CLASS MetaBlockNode Class MetaParserNode
-CLASS BlockNode MetaBlockNode ParserNode statements temporaryLocation
-CLASS MetaCascadeNode Class MetaParserNode
-CLASS CascadeNode MetaCascadeNode ParserNode head list
-CLASS MetaMessageNode Class MetaParserNode
-CLASS MessageNode MetaMessageNode ParserNode receiver name arguments
+CLASS Parser Object text index tokenType token argNames tempNames instNames maxTemps errBlock lineNum
+CLASS ParserNode Object lineNum
+CLASS Encoder Object name byteCodes index literals stackSize maxStack
+CLASS BodyNode ParserNode statements
+CLASS ReturnNode ParserNode expression
+CLASS AssignNode ParserNode target expression
+CLASS LiteralNode ParserNode value
+CLASS ArgumentNode ParserNode position
+CLASS TemporaryNode ParserNode position
+CLASS InstNode ParserNode position
+CLASS PrimitiveNode ParserNode number arguments
+CLASS BlockNode ParserNode statements temporaryLocation
+CLASS CascadeNode ParserNode head list
+CLASS MessageNode ParserNode receiver name arguments
 COMMENT ---------- method bodies ------------
 COMMENT -----------Object-------------------
 METHOD MetaObject

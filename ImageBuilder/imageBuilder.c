@@ -13,9 +13,11 @@ static char tokenBuffer[80];
 
 static struct object *lookupGlobal(char * name, int ok_missing);
 
-void sysError(char * a, char * b)
+static void
+sysError(char * a, char * b)
 {
-	printf("in syserror %s %s\n", a, b); exit(1);
+	printf("in syserror %s %s\n", a, b);
+	exit(1);
 }
 
 /*
@@ -338,7 +340,7 @@ struct object * newDictionary()
 
 static int lastOp = 0;
 
-# define ByteBufferTop 400
+# define ByteBufferTop 255
 static unsigned char byteBuffer[ByteBufferTop];
 static unsigned byteTop;
 
@@ -712,21 +714,30 @@ static int parseBlock()
 			}
 		p++; skipSpaces();
 		}
-	if (*p == ']')
+	if (*p == ']') {
 		genInstruction(PushConstant, nilConst);
-	else { int saveReturnOp;
-		saveReturnOp = returnOp;
+	} else {
+		int saveReturnOp = returnOp;
+
 		returnOp = BlockReturn;
 		while (1) {
-			if (! parseStatement()) return 0;
-			if (*p == '.') p++, skipSpaces();
-			if (*p == ']') break;
-			else genInstruction(DoSpecial, PopTop);
+			if (! parseStatement()) {
+				parseError("Statement syntax inside block");
 			}
-		returnOp = saveReturnOp;
+			if (*p == '.') {
+				p++;
+				skipSpaces();
+			}
+			if (*p == ']') {
+				break;
+			} else {
+				genInstruction(DoSpecial, PopTop);
+			}
 		}
+		returnOp = saveReturnOp;
+	}
 	p++; skipSpaces();	/* skip over ] */
-	genInstruction(DoSpecial, StackReturn);
+	genInstruction(DoSpecial, returnOp);
 	byteBuffer[savedLocation] = byteTop;
 	tempTop = saveTop;
 
@@ -865,7 +876,7 @@ static int optimizeBlock()
 {
 	if (*p != '[') {
 		if (! parseTerm()) return 0;
-		sysError("missing block as optimized block argument", "");
+		parseError("missing block as optimized block argument");
 		}
 	else {
 		p++; skipSpaces();
@@ -893,20 +904,23 @@ static int controlFlow(int opt1, char * rest, int opt2)
 	genInstruction(DoSpecial, opt1);
 	save1 = byteTop;
 	genByte(0);
-	if (! optimizeBlock()) return 0;
+	if (!optimizeBlock()) {
+		parseError("syntax error in control flow");
+	}
 	genInstruction(DoSpecial, Branch);
 	save2 = byteTop;
 	genByte(0);
 	byteBuffer[save1] = byteTop;
 	q = p;
 	if (isIdentifierChar(*p) && readIdentifier() && (strcmp(tokenBuffer, rest) == 0)) {
-		if (! optimizeBlock()) return 0;
-		lastOp = 0;
+		if (!optimizeBlock()) {
+			parseError("syntax error in control cascade");
 		}
-	else {
+		lastOp = 0;
+	} else {
 		p = q;
 		genInstruction(PushConstant, opt2);
-		}
+	}
 	byteBuffer[save2] = byteTop;
 	return 1;
 }
@@ -1156,9 +1170,9 @@ static struct object * BeginCommand()
 		bootMethod->data[literalsInMethod] = buildLiteralArray();
 		bootMethod->data[byteCodesInMethod] = buildByteArray();
 		bootMethod->data[stackSizeInMethod] = newInteger(12);
-		}
-	else
-		sysError("parse error reported", "building begin method");
+	} else {
+		parseError("building begin method");
+	}
 
 	return bootMethod;
 }
@@ -1205,8 +1219,9 @@ static void MethodCommand()
 	/* read class name */
 	readIdentifier();
 	currentClass = lookupGlobal(tokenBuffer, 1);
-	if (! currentClass)
+	if (! currentClass) {
 		sysError("unknown class in Method", tokenBuffer);
+	}
 
 	inputMethodText();	
 
@@ -1250,21 +1265,25 @@ static void ClassCommand()
 	/* now read the instance class */
 	readIdentifier();
 	instClass = lookupGlobal(tokenBuffer, 1);
-	if (! instClass)
+	if (! instClass) {
 		sysError("can't find instance class", tokenBuffer);
+	}
 	nClass->class = instClass;
 	
 	/* now read the super class */
 	readIdentifier();
 	supClass = lookupGlobal(tokenBuffer, 1);
-	if (! supClass) 
+	if (! supClass)  {
 		sysError("can't find super class", tokenBuffer);
+	}
 	nClass->data[parentClassInClass] = supClass;
 	
 	/* rest are instance variables */
 	litTop = 0;
 	while (*p) {
-		if (! isIdentifierChar(*p)) sysError("looking for var", p);
+		if (! isIdentifierChar(*p)) {
+			sysError("looking for var", p);
+		}
 		readIdentifier();
 		addLiteral(newSymbol(tokenBuffer));
 		}
@@ -1311,7 +1330,7 @@ static void imageOut(FILE * fp, struct object * obj)
 	if (obj == 0) {
 		sysError("writing out null object", 0);
 		return;
-		}
+	}
 
 			/* see if already written */
 	for (i = 0; i < imageTop; i++)

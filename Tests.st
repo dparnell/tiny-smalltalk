@@ -230,7 +230,7 @@ input	| value c nl |
 		[ value <- value + c asString ].
 	^ value
 !
-!SmallInt
+!Number
 to: limit do: aBlock  | i |
 		" optimize arithmetic loops "
 	i <- self.

@@ -473,20 +473,19 @@ execute(struct object *aProcess)
 
 			temporaries = gcalloc(low);
 			temporaries->class = ArrayClass;
-			for (i = 0; i < low; i++)
+			for (i = 0; i < low; i++) {
 				temporaries->data[i] = nilObject;
+			}
 			rootStack[rootTop++] = temporaries; /* temporaries */
 		} else {
-			rootStack[rootTop++] = 0;	/* why bother */
+			rootStack[rootTop++] = NULL;	/* why bother */
 			/* the following silly gyrations are just in case */
 			/* gc occurs while we are building a couple of */
 			/* integers to save the current state */
 		}
-		rootStack[rootTop++] = newInteger(bytePointer);
-		rootStack[rootTop++] = newInteger(stackTop);
-		context = rootStack[rootTop-5];
-		context->data[stackTopInContext] = rootStack[--rootTop];
-		context->data[bytePointerInContext] = rootStack[--rootTop];
+		context = rootStack[rootTop-3];
+		context->data[stackTopInContext] = newInteger(stackTop);
+		context->data[bytePointerInContext] = newInteger(bytePointer);
 			/* now go off and build the new context */
 		context = gcalloc(contextSize);
 		context->class = ContextClass;
@@ -496,16 +495,16 @@ execute(struct object *aProcess)
 		stack->class = ArrayClass;
 		stackTop = 0;
 		context->data[previousContextInContext] = rootStack[--rootTop];
-		if (high == 1)
+		if (high == 1) {
 			context->data[previousContextInContext] =
 			context->data[previousContextInContext]->
 				data[previousContextInContext];
-		else if (high == 2)
+		} else if (high == 2) {
 			context->data[previousContextInContext] =
 			context->data[previousContextInContext]->
 				data[creatingContextInBlock]->
 				data[previousContextInContext];
-			
+		}
 		method = context->data[methodInContext] = rootStack[--rootTop];
 		arguments = context->data[argumentsInContext] 
 			= rootStack[--rootTop];

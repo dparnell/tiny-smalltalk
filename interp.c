@@ -1064,6 +1064,4 @@ doReturn2:
                 break;
         }
     }
-
-    return 5;
 }

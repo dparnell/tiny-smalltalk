@@ -1,5 +1,5 @@
 +Encoder subclass: #DebugEncoder variables: #(lines parser oldLine oldRange)
-+Method subclass: #DebugMethod variables: #(lines)
++Method subclass: #DebugMethod variables: #(lines textlines)
 +Object subclass: #Debug variables: #(ctx proc)
 !DebugEncoder
 parser: p
@@ -84,6 +84,7 @@ srcLine | meth line |
 
 	" Can't show it if this isn't a debuggable method "
 	(meth isKindOf: DebugMethod) ifFalse: [
+		'Not debuggable' print. Char newline print.
 		^ nil
 	].
 
@@ -92,17 +93,17 @@ srcLine | meth line |
 !
 !Debug
 showLine | line meth |
+	meth <- ctx method.
 	line <- self srcLine.
 	line isNil
 		ifTrue: [
-			meth <- ctx method.
 			'Method ' print.  meth name print.
 			' of class ' print.  meth class print.
 			': no source displayed.' print.
 		]
 		ifFalse: [
 			" Show the text "
-			(meth text at: line) print
+			(meth textlines at: line) print
 		].
 	Char newline print
 !
@@ -180,19 +181,28 @@ run | prev did cmd srcl |
 !
 !DebugMethod
 debug: l
-	lines <- l
+	lines <- l.
+	textlines <- text break: ((Char new: 10) asString)
 !
 !DebugMethod
 debug
 	^ lines
 !
 !DebugMethod
-srcLine: bp
+textlines
+	^ textlines
+!
+!DebugMethod
+srcLine: bp | bpx |
+	" Array index version of bp... thanks, Smalltalk "
+	bpx <- bp + 1.
 	lines binaryDo: [:src :range |
-		(range contains: bp) ifTrue: [
+		range printString print. Char newline print.
+		(range contains: bpx) ifTrue: [
 			^ src
 		]
 	].
+	'No match for ' print. bp printString print. Char newline print.
 	^nil
 !
 !Debug

@@ -52,7 +52,7 @@ struct object * binaryMessages[3];
 /*
  * Debugging
  */
-#ifdef DEBUG
+#if defined(DEBUG) && defined(TRACE)
 static void
 indent(struct object *ctx)
 {

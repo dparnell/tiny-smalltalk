@@ -3,8 +3,8 @@
 #	written by Tim Budd, Oregon State University, budd@cs.orst.edu
 #
 
-CC = gcc
-CFLAGS = -g
+CC=gcc
+CFLAGS=-g -Wall
 
 st: main.o interp.o memory.o
 	rm -f st

@@ -37,17 +37,9 @@ extern struct object * primitive(int, struct object *);
 	The following are roots for the file out 
 */
 
-struct object * nilObject;
-struct object * smallInts[10];
-struct object * trueObject;
-struct object * falseObject;
-struct object * SmallIntClass;
-struct object * ArrayClass;
-struct object * BlockClass;
-struct object * ContextClass;
-struct object * globalsObject;
-struct object * initialMethod;
-struct object * binaryMessages[3];
+struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
+	*SmallIntClass, *ArrayClass, *BlockClass, *ContextClass,
+	*globalsObject, *initialMethod, *binaryMessages[3];
 
 /*
  * Debugging
@@ -200,7 +192,7 @@ execute(struct object *aProcess)
     struct object *context, *method, *arguments, *temporaries,
 	    *instanceVariables, *literals, *stack,
 	    *returnedValue = nilObject, *messageSelector,
-	    *receiverClass;
+	    *receiverClass, *op;
     unsigned char *bp;
 
     /* push process, so as to save it */
@@ -647,7 +639,14 @@ execute(struct object *aProcess)
 				break;
 				
 			case 11: 	/* small integer division */
-				low = integerValue(stack->data[--stackTop]);
+				op = stack->data[--stackTop];
+				if (op->class != SmallIntClass) {
+					stackTop -= 1;
+					goto failPrimitive;
+				}
+				/* Don't need to check class, since */
+				/*  self got sent quo: to get here */
+				low = integerValue(op);
 				high = integerValue(stack->data[--stackTop]);
 				if (low == 0) {
 					goto failPrimitive;
@@ -657,7 +656,13 @@ execute(struct object *aProcess)
 				break;
 				
 			case 12:	/* small integer remainder */ 
-				low = integerValue(stack->data[--stackTop]);
+				op = stack->data[--stackTop];
+				if (op->class != SmallIntClass) {
+					stackTop -= 1;
+					goto failPrimitive;
+				}
+				low = integerValue(op);
+				/* See comment for primitive 11 */
 				high = integerValue(stack->data[--stackTop]);
 				if (low == 0) {
 					goto failPrimitive;

@@ -12,7 +12,7 @@
 	the following defaults must be set
 
 */
-# define DefaultImageFile "LittleSmalltalkImage"
+# define DefaultImageFile "image"
 # define DefaultStaticSize 40000
 # define DefaultDynamicSize 40000
 
@@ -89,10 +89,8 @@ FILE * tempFile;
 int
 main(int argc, char ** argv)
 {
-	struct object *aProcess;
-	struct object *aContext;
-	int size, i;
-	int staticSize, dynamicSize;
+	struct object *aProcess, *aContext, *o;
+	int size, i, staticSize, dynamicSize;
 	FILE *fp;
 	char imageFileName[120];
 
@@ -157,6 +155,8 @@ main(int argc, char ** argv)
 
 		case 3: printf("can't find method in call\n"); 
 			aProcess = rootStack[--rootTop];
+			o = aProcess->data[resultInProcess];
+			printf("Unknown method: %s\n", bytePtr(o));
 			aContext = aProcess->data[contextInProcess];
 			backTrace(aContext);
 			break;

@@ -108,27 +108,33 @@ gc_move(struct mobject * ptr)
 
 	while (1) {
 
-		/* part 1.  Walking down the tree
-			keep stacking objects to be moved until we find
-			one that we can handle */
-		while (1) {
-		/* if we find a pointer in the current space
-			to the new space (other than indirections) then
-			something is very wrong */
-		if ((old_address >= (struct mobject *) memoryBase)
-			&& (old_address <= (struct mobject *) memoryTop)) {
-			sysError("GC invariant failure -- address in new space",
+		/*
+		 * part 1.  Walking down the tree
+		 * keep stacking objects to be moved until we find
+		 * one that we can handle
+		 */
+		for (;;) {
+			/*
+			 * If we find a pointer in the current space
+			 * to the new space (other than indirections) then
+			 * something is very wrong
+			 */
+			if ((old_address >= (struct mobject *) memoryBase)
+			 && (old_address <= (struct mobject *) memoryTop)) {
+				sysError(
+				 "GC invariant failure -- address in new space",
 					(unsigned int)old_address);
 			}
-				/* else see if not  in old space */
+
+			/* else see if not  in old space */
 			if ((old_address < (struct mobject *) oldBase) ||
-					(old_address > (struct mobject *) oldTop)) {
+			 (old_address > (struct mobject *) oldTop)) {
 				replacement = old_address;
 				old_address = previous_object;
 				break;
-			}
-				/* else see if already forwarded */
-			else if (old_address->size & 01)  {
+
+			/* else see if already forwarded */
+			} else if (old_address->size & 01)  {
 				if (old_address->size & 02) {
 					replacement = old_address->data[0];
 				} else {
@@ -137,27 +143,30 @@ gc_move(struct mobject * ptr)
 				}
 				old_address = previous_object;
 				break;
-			}
-				/* else see if binary object */
-			else if (old_address->size & 02) {int isz;
+
+			/* else see if binary object */
+			} else if (old_address->size & 02) {
+				int isz;
+
 				isz = old_address->size >> 2;
 				sz = (isz + BytesPerWord - 1)/BytesPerWord;
 				memoryPointer -= (sz + 2);
 				new_address = (struct mobject *) memoryPointer;
 				new_address->size = (isz << 2) | 02;
 				while (sz) {
-					new_address->data[sz] = old_address->data[sz];
+					new_address->data[sz] =
+						old_address->data[sz];
 					sz--;
-					}
+				}
 				old_address->size |= 01;
 				new_address->data[0] = previous_object;
 				previous_object = old_address;
 				old_address = old_address->data[0];
 				previous_object->data[0] = new_address;
 				/* now go chase down class pointer */
-			}
-				/* must be non-binary object */
-			else  {
+
+			/* must be non-binary object */
+			} else  {
 				sz = old_address->size >> 2;
 				memoryPointer -= (sz + 2);
 				new_address = (struct mobject *) memoryPointer;
@@ -170,21 +179,25 @@ gc_move(struct mobject * ptr)
 			}
 		}
 
-		/* part 2.  Fix up pointers,
-			move back up tree as long as possible
-			old_address points to an object in the old space,
-			which in turns points to an object in the new space,
-			which holds a pointer that is now to be replaced.
-			the value in replacement is the new value */
-
-		while (1) {
-			if (old_address == 0) { /* backed out entirely */
+		/*
+		 * part 2.  Fix up pointers,
+		 * move back up tree as long as possible
+		 * old_address points to an object in the old space,
+		 * which in turns points to an object in the new space,
+		 * which holds a pointer that is now to be replaced.
+		 * the value in replacement is the new value
+		 */
+		for (;;) {
+			/* backed out entirely */
+			if (old_address == 0) {
 				return (struct object *) replacement;
 			}
-				/* case 1, binary or last value */
+
+			/* case 1, binary or last value */
 			if ((old_address->size & 02) ||
-				((old_address->size>>2) == 0)) {
-					/* fix up class pointer */
+			 ((old_address->size>>2) == 0)) {
+
+				/* fix up class pointer */
 				new_address = old_address->data[0];
 				previous_object = new_address->data[0];
 				new_address->data[0] = replacement;
@@ -197,8 +210,10 @@ gc_move(struct mobject * ptr)
 				previous_object = new_address->data[sz];
 				new_address->data[sz] = replacement;
 				sz--;
-					/* quick cheat for recovering
-						zero fields */
+
+				/*
+				 * quick cheat for recovering zero fields
+				 */
 				while (sz && (old_address->data[sz] == 0)) {
 					sz--;
 				}

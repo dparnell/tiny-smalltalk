@@ -275,7 +275,7 @@ parseMethod: text
 !
 METHOD Class
 new
-	" return a new instace of ourselves "
+	" return a new instance of ourselves "
 	<7 self size>
 !
 METHOD Class

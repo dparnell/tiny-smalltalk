@@ -1182,10 +1182,6 @@ lowOrder
 	^ self
 !
 METHOD SmallInt
-negative
-	^ false
-!
-METHOD SmallInt
 quo: arg
 	<11 self arg>
 	(arg isMemberOf: SmallInt) ifFalse: [^self quo: arg asSmallInt].
@@ -1234,7 +1230,7 @@ METHOD MetaInteger
 new: low | n |
 	n <- super new.
 	self in: n at: 1 put: low.
-	self in: n at: 2 put: 0.
+	self in: n at: 2 put: ((low negative) ifTrue: [-1] ifFalse: [0]).
 	^n
 !
 METHOD Integer

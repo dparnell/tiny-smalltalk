@@ -287,12 +287,20 @@ addMethod	| text |
 METHOD Class
 addMethod: text | meth |
 	meth <- self parseMethod: text.
-	meth notNil
-		ifTrue: [
-			methods at: meth name put: meth.
-			Method flushCache.
-			'ok' printNl
-		]
+	meth notNil ifTrue: [
+		methods at: meth name put: meth.
+		Method flushCache.
+		'ok' printNl.
+		^ meth
+	].
+	^ nil
+!
+METHOD Class
+removeMethod: methName
+	methods removeKey: methName ifAbsent: [
+		self error: 'Method not present: ' + (methName printString)
+	].
+	Method flushCache.
 !
 METHOD Class
 view: methodName
@@ -1199,6 +1207,10 @@ input	| value c nl |
 METHOD MetaString
 newline
 	^ Char newline asString
+!
+METHOD MetaString
+tab
+	^ Char tab asString
 !
 METHOD String
 edit

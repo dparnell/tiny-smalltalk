@@ -444,8 +444,7 @@ execute(struct object *aProcess)
 		    (cache[low].class == receiverClass)) {
 			method = cache[low].method;
 			cacheHit++;
-			}
-		else {
+		} else {
 			cacheMiss++;
 			method = lookupMethod(messageSelector, receiverClass);
 			if (! method) {
@@ -457,15 +456,19 @@ execute(struct object *aProcess)
 			cache[low].name = messageSelector;
 			cache[low].class = receiverClass;
 			cache[low].method = method;
-			}
+		}
 
-			/* see if we can optimize tail call */
-		if (bp[bytePointer] == (DoSpecial * 16 + StackReturn))
+		/* see if we can optimize tail call */
+		if (bp[bytePointer] == (DoSpecial * 16 + StackReturn)) {
 			high = 1;
-		else if (bp[bytePointer] == (DoSpecial * 16 + BlockReturn))
+		} else if (bp[bytePointer] ==
+				(DoSpecial * 16 + BlockReturn)) {
 			high = 2;
-		else    high = 0;
-			/* build temporaries for new context */
+		} else {
+			high = 0;
+		}
+
+		/* build temporaries for new context */
 		rootStack[rootTop++] = arguments;
 		rootStack[rootTop++] = method;
 		rootStack[rootTop++] = context;
@@ -676,6 +679,7 @@ execute(struct object *aProcess)
 
 		case 6:		/* new process execute */
 			low = execute(stack->data[--stackTop]);
+
 			/* got to load everything else */
 			returnedValue = newInteger(low);
 			break;

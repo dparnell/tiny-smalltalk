@@ -809,6 +809,13 @@ indexOf: aValue
 	^ nil
 !
 METHOD Array
+indexOfVal: aValue
+	1 to: self size do: [:idx|
+		((self at: idx) = aValue) ifTrue: [ ^ idx ]
+	].
+	^ nil
+!
+METHOD Array
 copy
 	^ self asArray
 !

@@ -69,6 +69,12 @@ in: object at: index put: value
 	<5 value object index>
 !
 METHOD Object
+in: object at: index
+	" browse instance variable via debugger "
+	<24 object index>.
+	self primitiveFailed
+!
+METHOD Object
 isNil
 	^ false
 !
@@ -765,6 +771,13 @@ METHOD Array
 includes: aValue
 	self do: [ :element | element = aValue ifTrue: [ ^ true ]].
 	^ false
+!
+METHOD Array
+indexOf: aValue
+	1 to: self size do: [:idx|
+		((self at: idx) == aValue) ifTrue: [ ^ idx ]
+	].
+	^ nil
 !
 METHOD Array
 copy
@@ -2316,7 +2329,7 @@ METHOD BlockNode
 compile: encoder block: inBlock | patchLocation |
 	super compile: encoder.
 	encoder genHigh: 12 low: temporaryLocation.
-	patchLocation <- encoder genCode: 0.
+	patchLocation <- encoder genVal: 0.
 	self compileInLine: encoder block: true.
 	encoder genHigh: 15 low: 2. " return top of stack "
 	encoder patch: patchLocation
@@ -2416,11 +2429,11 @@ optimizeWhile: encoder block: inBlock | start save |
 	name = #whileTrue:	" branch if false/true "
 		ifTrue: [ encoder genHigh: 15 low: 8 ]
 		ifFalse: [ encoder genHigh: 15 low: 7 ].
-	save <- encoder genCode: 0.
+	save <- encoder genVal: 0.
 	arguments first compileInLine: encoder block: inBlock.
 	encoder genHigh: 15 low: 5. " pop from stack "
 	encoder genHigh: 15 low: 6. " branch "
-	encoder genCode: start. " branch target "
+	encoder genVal: start. " branch target "
 	encoder patch: save.
 	encoder genHigh: 5 low: 10  " push nil "
 !
@@ -2428,10 +2441,10 @@ METHOD MessageNode
 compile: encoder test: t constant: c block: inBlock | save ssave |
 	super compile: encoder.
 	encoder genHigh: 15 low: t.  " branch test "
-	save <- encoder genCode: 0.
+	save <- encoder genVal: 0.
 	arguments first compileInLine: encoder block: inBlock.
 	encoder genHigh: 15 low: 6.  " branch "
-	ssave <- encoder genCode: 0.
+	ssave <- encoder genVal: 0.
 	encoder patch: save.
 	encoder genHigh: 5 low: c.  " push constant "
 	encoder patch: ssave
@@ -2439,11 +2452,11 @@ compile: encoder test: t constant: c block: inBlock | save ssave |
 METHOD MessageNode
 optimizeIf: encoder block: inBlock | save ssave |
 	encoder genHigh: 15 low: 7.  " branch if true test "
-	save <- encoder genCode: 0.
+	save <- encoder genVal: 0.
 	arguments first compileInLine: encoder block: inBlock.
 	arguments removeFirst.
 	encoder genHigh: 15 low: 6.  " branch "
-	ssave <- encoder genCode: 0.
+	ssave <- encoder genVal: 0.
 	encoder patch: save.
 	arguments first compileInLine: encoder block: inBlock.
 	encoder patch: ssave
@@ -2475,7 +2488,9 @@ popArgs: n
 	stackSize <- stackSize - n.
 !
 METHOD Encoder
-genLiteral: aValue
+genLiteral: aValue | idx |
+	idx <- literals indexOf: aValue.
+	idx notNil ifTrue: [ ^ idx - 1 ].
 	literals <- literals with: aValue.
 	^ literals size - 1
 !
@@ -2494,6 +2509,12 @@ genCode: byte
 	^ index
 !
 METHOD Encoder
+genVal: byte
+	self genCode: (byte rem: 256).
+	self genCode: (byte quo: 256).
+	^ index-1
+!
+METHOD Encoder
 expandByteCodes	| newarray size |
 	size <- byteCodes size.
 	newarray <- ByteArray new: size + 8.
@@ -2503,7 +2524,8 @@ expandByteCodes	| newarray size |
 METHOD Encoder
 patch: loc
 		" patch a goto from a block "
-	byteCodes at: loc put: index
+	byteCodes at: loc put: (index rem: 256).
+	byteCodes at: (loc + 1) put: (index quo: 256)
 !
 METHOD Encoder
 currentLocation

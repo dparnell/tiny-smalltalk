@@ -152,7 +152,7 @@ main(int argc, char ** argv)
 #if defined(VSTA) && defined(PROFILE)
 	take_samples(1);
 #endif
-	switch(execute(aProcess)) {
+	switch(execute(aProcess, 0)) {
 		case 2: printf("User defined return\n"); break;
 
 		case 3: printf("can't find method in call\n"); 

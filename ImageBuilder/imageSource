@@ -409,13 +409,13 @@ and: aBlock
 !
 COMMENT -----------Process--------------
 METHOD Process
-doExecute
-	<6 self>
+doExecute: ticks
+	<6 self ticks>
 !
 METHOD Process
 execute: aContext	| r |
 	context <- aContext.
-	r <- self doExecute.
+	r <- self doExecute: 0.
 	(r = 3) ifTrue: [ 'Message not understood:' print.
 			result print.  Char newline print ]
 	(r = 4) ifTrue: [ ^ result ]

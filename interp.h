@@ -5,7 +5,7 @@
 	May be freely redistributed if not for profit.
 */
 
-int execute (struct object *);
+int execute(struct object *aProcess, int ticks);
 
 /*
 	symbolic definitions for the bytecodes
@@ -38,6 +38,7 @@ int execute (struct object *);
 # define BranchIfTrue 7
 # define BranchIfFalse 8
 # define SendToSuper 11
+# define Breakpoint 12
 
 /* special constants */
 

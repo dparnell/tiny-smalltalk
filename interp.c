@@ -247,7 +247,7 @@ do_Integer(int op, struct object *low, struct object *high)
 }
 
 int
-execute(struct object *aProcess)
+execute(struct object *aProcess, int ticks)
 {   
     int low, high, x, stackTop, bytePointer;
     struct object *context, *method, *arguments, *temporaries,
@@ -278,6 +278,18 @@ execute(struct object *aProcess)
 
 
     for (;;) {
+	/*
+	 * If we're running against a CPU tick count, stop execution
+	 * when we expire the given number of ticks.
+	 */
+	if (ticks && (--ticks == 0)) {
+		aProcess = rootStack[--rootTop];
+		aProcess->data[contextInProcess] = context;
+		aProcess->data[resultInProcess] = returnedValue;
+		return(5);
+	}
+
+	/* Otherwise decode the instruction */
         low = (high = bp[bytePointer++] ) & 0x0F;
         high >>= 4;
         if (high == Extended) {
@@ -285,6 +297,7 @@ execute(struct object *aProcess)
             low = bp[bytePointer++] ;
         }
 
+	/* And dispatch */
         switch (high) {
 
 	case PushInstance:
@@ -452,7 +465,7 @@ execute(struct object *aProcess)
 			    aProcess->data[contextInProcess] = context;
 			    aProcess->data[resultInProcess] = messageSelector;
 			    return 3;
-			    }
+		    }
 		    cache[low].name = messageSelector;
 		    cache[low].class = receiverClass;
 		    cache[low].method = method;
@@ -677,9 +690,11 @@ execute(struct object *aProcess)
 		    break;
 
 	    case 6:		/* new process execute */
-		    low = execute(stack->data[--stackTop]);
+		    low = integerValue(stack->data[--stackTop]);
+		    op = stack->data[--stackTop];
+		    low = execute(op, low);
 
-		    /* got to load everything else */
+		    /* return value as a SmallInt */
 		    returnedValue = newInteger(low);
 		    break;
 

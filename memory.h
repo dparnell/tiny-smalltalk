@@ -21,12 +21,13 @@
 	space which is never garbage collected
 	This improves speed, as these items are not moved during GC
 */
+#include <sys/types.h>
 
 struct object {
-	int size;
-	struct object * class;
-	struct object * data [0];
-	};
+	uint size;
+	struct object *class;
+	struct object *data[0];
+};
 
 /*
 	byte objects are used to represent strings and symbols
@@ -34,10 +35,10 @@ struct object {
 */
 
 struct byteObject {
-	int size;
+	uint size;
 	struct object *class;
 	unsigned char bytes[0];
-	};
+};
 
 # define BytesPerWord 4
 # define bytePtr(x) (((struct byteObject *) x)->bytes)
@@ -56,6 +57,14 @@ struct byteObject {
 #define CLASS(x) (IS_SMALLINT(x) ? SmallIntClass : ((x)->class))
 #define integerValue(x) (((int)(x)) >> 1)
 #define newInteger(x) ((struct object *)((((int)(x)) << 1) | 0x01))
+
+/*
+ * The "size" field is the top 30 bits; the bottom two are flags
+ */
+#define SIZE(op) ((op)->size >> 2)
+#define SETSIZE(op, val) ((op)->size = ((val) << 2))
+#define FLAG_GCDONE (0x01)
+#define FLAG_BIN (0x02)
 
 /*
 	memoryBase holds the pointer to the current space,
@@ -102,7 +111,7 @@ extern int isDynamicMemory(struct object *);
 #define gcalloc(sz) (((memoryPointer = \
 	(struct object *)(((uint *)memoryPointer) - ((sz) + 2))) < \
 	memoryBase) ?  gcollect(sz) : \
-	(memoryPointer->size = (sz) << 2, memoryPointer))
+	(SETSIZE(memoryPointer, (sz)), memoryPointer))
 
 #ifndef gcalloc
 extern struct object *gcalloc(int);

@@ -56,7 +56,7 @@ void backTrace(struct object * aContext)
 		arguments = aContext->data[argumentsInContext];
 		if (arguments && (arguments != nilObject)) {
 			printf("(");
-			for (i = 0; i < (arguments->size >> 2); i++)
+			for (i = 0; i < SIZE(arguments); i++)
 				printf("%s%s", 
 				((i == 0) ? "" : ", "),
 				bytePtr(arguments->data[i]->class->
@@ -197,7 +197,7 @@ void
 getUnixString(char * to, int size, struct object * from)
 {
 	int i;
-	int fsize = from->size >> 2;
+	int fsize = SIZE(from);
 	struct byteObject * bobj = (struct byteObject *) from;
 
 	if (fsize > size) sysError("error converting text into unix string",
@@ -284,7 +284,7 @@ primitive(int primitiveNumber, struct object * args)
 		fp = fopen(nameBuffer, "w");
 		if (fp == NULL) 
 			sysError("cannot open temp edit file", 0);
-		j = args->data[0]->size >> 2;
+		j = SIZE(args->data[0]);
 		p = ((struct byteObject *) args->data[0])->bytes;
 		for (i = 0; i < j; i++)
 			fputc(*p++, fp);

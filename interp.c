@@ -91,8 +91,8 @@ indent(struct object *ctx)
 
 static int symbolcomp(struct object * left, struct object * right)
 {
-	int leftsize = left->size >> 2;
-	int rightsize = right->size >> 2;
+	int leftsize = SIZE(left);
+	int rightsize = SIZE(right);
 	int minsize = leftsize;
 	register int i;
 
@@ -120,7 +120,7 @@ lookupMethod(struct object *selector, struct object *class)
 		 */
 		dict = class->data[methodsInClass];
 		keys = dict->data[0];
-		low = 0; high = keys->size >> 2;
+		low = 0; high = SIZE(keys);
 
 		/*
 		 * Do a binary search through its keys, which are
@@ -660,7 +660,7 @@ execute(struct object *aProcess, int ticks)
 
 	    case 4:	/* object size */
 		    returnedValue = stack->data[--stackTop];
-		    high = returnedValue->size >> 2;
+		    high = SIZE(returnedValue);
 		    returnedValue = newInteger(high);
 		    break;
 
@@ -674,7 +674,7 @@ execute(struct object *aProcess, int ticks)
 		    returnedValue = stack->data[--stackTop];
 		    /* Bounds check */
 		    if ((low < 0) ||
-		     (low >= (returnedValue->size >> 2))) {
+		     (low >= SIZE(returnedValue))) {
 			    stackTop -= 1;
 			    goto failPrimitive;
 		    }
@@ -721,7 +721,7 @@ execute(struct object *aProcess, int ticks)
 		    temporaries = returnedValue->data[temporariesInBlock];
 		    low -= 2;
 		    x = (temporaries ?
-			    ((temporaries->size >> 2) - high) : 0);
+			    (SIZE(temporaries) - high) : 0);
 		    if (low >= x) {
 			    stackTop -= (low+1);
 			    goto failPrimitive;
@@ -861,7 +861,7 @@ execute(struct object *aProcess, int ticks)
 		    low = integerValue(stack->data[--stackTop])-1;
 		    returnedValue = stack->data[--stackTop];
 		    if ((low < 0) ||
-		     (low >= (returnedValue->size >> 2))) {
+		     (low >= SIZE(returnedValue))) {
 			    goto failPrimitive;
 		    }
 		    low = bytePtr(returnedValue)[low];
@@ -872,7 +872,7 @@ execute(struct object *aProcess, int ticks)
 		    low = integerValue(stack->data[--stackTop])-1;
 		    returnedValue = stack->data[--stackTop];
 		    if ((low < 0) ||
-		     (low >= (returnedValue->size >> 2))) {
+		     (low >= SIZE(returnedValue))) {
 			    stackTop -= 1;
 			    goto failPrimitive;
 		    }
@@ -884,7 +884,7 @@ execute(struct object *aProcess, int ticks)
 		    rootStack[rootTop++] = stack->data[--stackTop];
 		    rootStack[rootTop++] = returnedValue 
 			    = stack->data[--stackTop];
-		    low = returnedValue->size >> 2;
+		    low = SIZE(returnedValue);
 		    returnedValue = gcialloc(low);
 		    messageSelector = rootStack[--rootTop];
 		    while (low-- > 0)
@@ -897,7 +897,7 @@ execute(struct object *aProcess, int ticks)
 		    low = integerValue(stack->data[--stackTop])-1;
 		    returnedValue = stack->data[--stackTop];
 		    if ((low < 0) ||
-		     (low >= (returnedValue->size >> 2))) {
+		     (low >= SIZE(returnedValue))) {
 			    goto failPrimitive;
 		    }
 		    returnedValue = returnedValue->data[low];

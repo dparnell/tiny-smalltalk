@@ -92,8 +92,8 @@ gcinit(int staticsz, int dynamicsz)
 	The returned value is the address in the new space.
 */
 struct mobject {
-	int size;
-	struct mobject * data [0];
+	uint size;
+	struct mobject *data[0];
 };
 
 static struct object *
@@ -141,32 +141,33 @@ gc_move(struct mobject * ptr)
 				break;
 
 			/* else see if already forwarded */
-			} else if (old_address->size & 01)  {
-				if (old_address->size & 02) {
+			} else if (old_address->size & FLAG_GCDONE)  {
+				if (old_address->size & FLAG_BIN) {
 					replacement = old_address->data[0];
 				} else {
-					sz = old_address->size >> 2;
+					sz = SIZE(old_address);
 					replacement = old_address->data[sz];
 				}
 				old_address = previous_object;
 				break;
 
 			/* else see if binary object */
-			} else if (old_address->size & 02) {
+			} else if (old_address->size & FLAG_BIN) {
 				int isz;
 
-				isz = old_address->size >> 2;
+				isz = SIZE(old_address);
 				sz = (isz + BytesPerWord - 1)/BytesPerWord;
 				memoryPointer = (struct object *)(
 				 ((uint *)memoryPointer) - (sz + 2));
 				new_address = (struct mobject *)memoryPointer;
-				new_address->size = (isz << 2) | 02;
+				SETSIZE(new_address, isz);
+				new_address->size |= FLAG_BIN;
 				while (sz) {
 					new_address->data[sz] =
 						old_address->data[sz];
 					sz--;
 				}
-				old_address->size |= 01;
+				old_address->size |= FLAG_GCDONE;
 				new_address->data[0] = previous_object;
 				previous_object = old_address;
 				old_address = old_address->data[0];
@@ -175,12 +176,12 @@ gc_move(struct mobject * ptr)
 
 			/* must be non-binary object */
 			} else  {
-				sz = old_address->size >> 2;
+				sz = SIZE(old_address);
 				memoryPointer = (struct object *)(
 				 ((uint *)memoryPointer) - (sz + 2));
 				new_address = (struct mobject *)memoryPointer;
-				new_address->size = (sz << 2);
-				old_address->size |= 01;
+				SETSIZE(new_address, sz);
+				old_address->size |= FLAG_GCDONE;
 				new_address->data[sz] = previous_object;
 				previous_object = old_address;
 				old_address = old_address->data[sz];
@@ -203,8 +204,8 @@ gc_move(struct mobject * ptr)
 			}
 
 			/* case 1, binary or last value */
-			if ((old_address->size & 02) ||
-			 ((old_address->size>>2) == 0)) {
+			if ((old_address->size & FLAG_BIN) ||
+			 (SIZE(old_address) == 0)) {
 
 				/* fix up class pointer */
 				new_address = old_address->data[0];
@@ -214,7 +215,7 @@ gc_move(struct mobject * ptr)
 				replacement = new_address;
 				old_address = previous_object;
 			} else {
-				sz = old_address->size >> 2;
+				sz = SIZE(old_address);
 				new_address = old_address->data[sz];
 				previous_object = new_address->data[sz];
 				new_address->data[sz] = replacement;
@@ -227,7 +228,8 @@ gc_move(struct mobject * ptr)
 					new_address->data[sz--] = 0;
 				}
 
-				old_address->size = (sz << 2) | 01;
+				SETSIZE(old_address, sz);
+				old_address->size |= FLAG_GCDONE;
 				new_address->data[sz] = previous_object;
 				previous_object = old_address;
 				old_address = old_address->data[sz];
@@ -279,7 +281,7 @@ gcollect(int sz)
 	if (memoryPointer < memoryBase) {
 		sysError("insufficient memory after garbage collection", sz);
 	}
-	memoryPointer->size = sz << 2;
+	SETSIZE(memoryPointer, sz);
 	return(memoryPointer);
 }
 
@@ -296,7 +298,7 @@ staticAllocate(int sz)
 	if (staticPointer < staticBase) {
 		sysError("insufficient static memory", 0);
 	}
-	staticPointer->size = sz << 2;
+	SETSIZE(staticPointer, sz);
 	return(staticPointer);
 }
 
@@ -308,7 +310,8 @@ staticIAllocate(int sz)
 
 	trueSize = (sz + BytesPerWord - 1) / BytesPerWord;
 	result = staticAllocate(trueSize);
-	result->size = (sz << 2) | 02;
+	SETSIZE(result, sz);
+	result->size |= FLAG_BIN;
 	return result;
 }
 
@@ -326,7 +329,7 @@ gcalloc(int sz)
 	if (memoryPointer < memoryBase) {
 		return gcollect(sz);
 	}
-	memoryPointer->size = sz << 2;
+	SETSIZE(memoryPointer, sz);
 	return(memoryPointer);
 }
 # endif
@@ -339,7 +342,8 @@ gcialloc(int sz)
 
 	trueSize = (sz + BytesPerWord - 1) / BytesPerWord;
 	result = gcalloc(trueSize);
-	result->size = (sz << 2) | 02;
+	SETSIZE(result, sz);
+	result->size |= FLAG_BIN;
 	return result;
 }
 
@@ -505,9 +509,9 @@ objectWrite(FILE *fp, struct object * obj)
 	indirArray[indirtop++] = obj;
 
 	/* byte objects */
-	if (obj->size & 02) {
+	if (obj->size & FLAG_BIN) {
 		struct byteObject * bobj = (struct byteObject *) obj;
-		size = obj->size >> 2;
+		size = SIZE(obj);
 		writeWord(fp, 3);
 		writeWord(fp, size);
 		for (i = 0; i < size; i++)
@@ -517,7 +521,7 @@ objectWrite(FILE *fp, struct object * obj)
 	}
 
 	/* ordinary objects */
-	size = obj->size >> 2;
+	size = SIZE(obj);
 	writeWord(fp, 1);
 	writeWord(fp, size);
 	objectWrite(fp, obj->class);

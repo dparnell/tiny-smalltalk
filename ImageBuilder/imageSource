@@ -7,9 +7,9 @@ COMMENT-----------------------------------------------------------
 COMMENT		The strange circular world at the beginning
 COMMENT CLASS name   instanceOf subclassOf  (instance variable names)
 COMMENT CLASS Object MetaObject nil
+CLASS Class      MetaClass Object      name parentClass methods size variables
 CLASS MetaObject Class     Class
 CLASS MetaClass  Class     MetaObject
-CLASS Class      MetaClass Object      name parentClass methods size variables
 COMMENT--------------------------------------------------------
 COMMENT-------then, the remaining classes in the initial image
 COMMENT----------------------------
@@ -242,11 +242,11 @@ METHOD Class
 subclass: name variables: v classVariables: cv | meta |
 	meta <- Class new name: ('Meta' + name asString) asSymbol
 		parent: self class
-		variables: Class variables.
+		variables: cv.
 	globals at: name put: ( meta new name: name
 		parent: self
 		variables: v ).
-	^ 'subclass created:' + name printString
+	^ 'subclass created: ' + name printString
 !
 METHOD Class
 addMethod	| text |

@@ -8,13 +8,11 @@
 #include "memory.h"
 #include "interp.h"
 
-static FILE * fin;
-static char inputBuffer[1500];
-static char *p;
-static char tokenBuffer[80];
+static FILE *fin;
+static char inputBuffer[1500], *p, tokenBuffer[80];
 
 static struct object *lookupGlobal(char * name, int ok_missing);
-static int parseStatement(void), parseExpression(void);
+static int parseStatement(void), parseExpression(void), parseTerm(void);
 
 static void
 sysError(char * a, char * b)
@@ -27,16 +25,17 @@ sysError(char * a, char * b)
 	The following are roots for the file out 
 */
 
-struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
-	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass,
-	*ContextClass, *initialMethod;
+static struct object *nilObject, *smallInts[10], *trueObject, *falseObject,
+	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass;
 
-struct object * SymbolClass;
+static struct object * SymbolClass;
 
 # undef gcalloc
 
-struct object * gcalloc(int size)
-{	struct object * result;
+static struct object *
+gcalloc(int size)
+{
+	struct object * result;
 
 	result = (struct object *)
 		malloc(sizeof(struct object) + size * sizeof(struct object *));
@@ -48,7 +47,8 @@ struct object * gcalloc(int size)
 	return result;
 }
 
-struct byteObject * binaryAlloc(int size)
+static struct byteObject *
+binaryAlloc(int size)
 {
 	int osize;
 	struct byteObject * result;
@@ -59,7 +59,8 @@ struct byteObject * binaryAlloc(int size)
 	return result;
 }
 
-struct object * newInteger(int value)
+struct object *
+newInteger(int value)
 {
 	struct integerObject * result;
 
@@ -80,8 +81,10 @@ struct object * newInteger(int value)
 /*	Errors   */
 /* ------------------------------------------------------------- */
 
-static int parseError(char * msg)
-{	char * q;
+static int
+parseError(char * msg)
+{
+	char * q;
 
 	for ( q = inputBuffer; q != p; )
 		printf("%c", *q++);
@@ -97,11 +100,12 @@ static int parseError(char * msg)
 /*	names   */
 /* ------------------------------------------------------------- */
 
-int globalTop = 0;
-char * globalNames[100];
-struct object * globals[100];
+static int globalTop = 0;
+static char *globalNames[100];
+static struct object *globals[100];
 
-void addGlobalName(char * name, struct object * value)
+void
+addGlobalName(char * name, struct object * value)
 {
 	char * newName;
 
@@ -135,7 +139,8 @@ lookupGlobal(char *name, int ok_missing)
 /*	Lexical Analysis  */
 /* ------------------------------------------------------------- */
 
-static void inputMethodText()
+static void
+inputMethodText()
 {
 	char c;
 
@@ -157,7 +162,8 @@ static void inputMethodText()
 		}
 }
 
-static void skipSpaces()
+static void
+skipSpaces()
 {
 	while ((*p == ' ') || (*p == '\t') || (*p == '\n')) p++;
 	if (*p == '\"') {
@@ -168,20 +174,23 @@ static void skipSpaces()
 		}
 }
 
-static int isDigit(char p)
+static int
+isDigit(char p)
 {
 	if ((p >= '0') && (p <= '9')) return 1;
 	return 0;
 }
 
-static int isIdentifierChar(char p)
+static int
+isIdentifierChar(char p)
 {
 	if ((p >= 'a') && (p <= 'z')) return 1;
 	if ((p >= 'A') && (p <= 'Z')) return 1;
 	return 0;
 }
 
-static int isBinary(char p)
+static int
+isBinary(char p)
 {
 	switch(p) {
 		case '+': case '*': case '-': case '/': case '<': case '=':
@@ -191,7 +200,8 @@ static int isBinary(char p)
 	return 0;
 }
 
-static void readBinary()
+static void
+readBinary()
 {
 	tokenBuffer[0] = *p++;
 	if (isBinary(*p)) {
@@ -203,8 +213,10 @@ static void readBinary()
 	skipSpaces();
 }
 
-static int readIdentifier()
-{	int keyflag;
+static int
+readIdentifier()
+{
+	int keyflag;
 	char *q = tokenBuffer;
 	while (isIdentifierChar(*p) || isDigit(*p)) *q++ = *p++;
 	*q = '\0';
@@ -220,7 +232,8 @@ static int readIdentifier()
 	return keyflag;
 }
 
-static int readInteger()
+static int
+readInteger()
 {
 	int val = *p++ - '0';
 	while (isDigit(*p))
@@ -234,10 +247,11 @@ static int readInteger()
 /*	new instances of standard things   */
 /* ------------------------------------------------------------- */
 
-int symbolTop = 0;
-struct object * oldSymbols[500];
+static int symbolTop = 0;
+static struct object *oldSymbols[500];
 
-int symbolBareCmp(char * left, int leftsize, char * right, int rightsize)
+static int
+symbolBareCmp(char * left, int leftsize, char * right, int rightsize)
 {
 	int minsize = leftsize;
 	int i;
@@ -251,13 +265,15 @@ int symbolBareCmp(char * left, int leftsize, char * right, int rightsize)
 	return leftsize - rightsize;
 }
 
-int symbolCmp(struct object * left, struct object * right)
+static int
+symbolCmp(struct object * left, struct object * right)
 {
 	return symbolBareCmp(bytePtr(left), left->size >> 2, 
 		bytePtr(right), right->size >> 2);
 }
 
-struct object * newSymbol(char * text)
+static struct object *
+newSymbol(char * text)
 {
 	int i;
 	struct byteObject * result;
@@ -277,7 +293,8 @@ struct object * newSymbol(char * text)
 	return (struct object *) result;
 }
 
-struct object * newClass(char * name)
+static struct object *
+newClass(char * name)
 {
 	struct object *newC;
 
@@ -286,7 +303,8 @@ struct object * newClass(char * name)
 	return newC;
 }
 
-struct object * newNode(struct object *v, struct object *l, struct object *r)
+static struct object *
+newNode(struct object *v, struct object *l, struct object *r)
 {
 	struct object * result;
 
@@ -298,8 +316,9 @@ struct object * newNode(struct object *v, struct object *l, struct object *r)
 	return result;
 }
 
-int countAssociations = 0;
-struct object * newAssociation(struct object * key, struct object * value)
+static int countAssociations = 0;
+struct object *
+newAssociation(struct object * key, struct object * value)
 {
 	struct object * result;
 
@@ -312,7 +331,8 @@ struct object * newAssociation(struct object * key, struct object * value)
 }
 
 
-struct object * newTree()
+static struct object *
+newTree(void)
 {
 	struct object * result;
 
@@ -321,8 +341,8 @@ struct object * newTree()
 	return result;
 }
 
-struct object *
-newMethodDictionary()
+static struct object *
+newMethodDictionary(void)
 {
 	struct object *result;
 
@@ -343,7 +363,8 @@ static int lastOp = 0;
 static unsigned char byteBuffer[ByteBufferTop];
 static unsigned byteTop;
 
-static void genByte(int v)
+static void
+genByte(int v)
 {
 	lastOp = 0;
 	byteBuffer[byteTop++] = v;
@@ -351,7 +372,8 @@ static void genByte(int v)
 		sysError("too many bytecodes", "");
 }
 
-static void genInstruction(int a, int b)
+static void
+genInstruction(int a, int b)
 {
 	/*printf("gen instruction %d %d\n", a, b);*/
 	if (b < 16) {
@@ -364,8 +386,10 @@ static void genInstruction(int a, int b)
 		}
 }
 
-static struct object * buildByteArray()
-{	struct byteObject * newObj;
+static struct object *
+buildByteArray()
+{
+	struct byteObject * newObj;
 	int i;
 
 	newObj = binaryAlloc(byteTop);
@@ -379,7 +403,8 @@ static struct object * buildByteArray()
 static struct object * litBuffer[LiteralBufferTop];
 static unsigned litTop = 0;
 
-static int addLiteral(struct object * a)
+static int
+addLiteral(struct object * a)
 {
 	litBuffer[litTop++] = a;
 	if (litTop >= LiteralBufferTop)
@@ -387,7 +412,8 @@ static int addLiteral(struct object * a)
 	return litTop-1;
 }
 
-static struct object * buildLiteralArray()
+static struct object *
+buildLiteralArray(void)
 {
 	int i;
 	struct object * result;
@@ -405,8 +431,10 @@ static struct object * buildLiteralArray()
 static char * argumentNames[ArgumentBufferTop];
 static int argumentTop;
 
-static void addArgument(char * name)
-{	char *p;
+static void
+addArgument(char * name)
+{
+	char *p;
 
 	if (!(p = (char *) malloc(1 + strlen(name))))
 		sysError("malloc failure", "addArguments");
@@ -415,10 +443,11 @@ static void addArgument(char * name)
 }
 
 # define TempBufferTop 500
-static char * tempBuffer[TempBufferTop];
+static char *tempBuffer[TempBufferTop];
 static int tempTop, maxTemp;
 
-static void addTemporary(char * name)
+static void
+addTemporary(char * name)
 {	
 	char * p;
 	p = (char *) malloc(1 + strlen(name));
@@ -433,7 +462,8 @@ static struct object * currentClass;
 /*	big bang   */
 /* ------------------------------------------------------------- */
 
-static void bigBang()
+static void
+bigBang(void)
 {
 	struct object *ObjectClass, *MetaObjectClass, *ClassClass,
 		*NilClass, *TrueClass, *FalseClass, *StringClass,
@@ -528,8 +558,10 @@ static void bigBang()
 /*	Parsing */
 /* ------------------------------------------------------------- */
 
-static int parseInteger()
-{	int i;
+static int
+parseInteger(void)
+{
+	int i;
 
 	i = readInteger();
 	if ((i >= 0) && (i < 10)) {
@@ -540,10 +572,10 @@ static int parseInteger()
 	return 1;
 }
 
-static int parsePrimitive()
-{	int primitiveNumber;
-	int argumentCount;
-	int parseTerm();
+static int
+parsePrimitive(void)
+{
+	int primitiveNumber, argumentCount;
 
 	/* skip over the left bracket */
 	p++; skipSpaces();
@@ -556,7 +588,9 @@ static int parsePrimitive()
 
 	/* then read the arguments */
 	for (argumentCount = 0; *p && (*p != '>'); argumentCount++)
-		if (! parseTerm()) return 0;
+		if (!parseTerm()) {
+			return 0;
+		}
 	
 	/* make sure we ended correctly */
 	if (*p == '>') {
@@ -573,10 +607,11 @@ static int parsePrimitive()
 	return(1);
 }
 
-static struct object * newString(char * text)
-{	int size;
-	struct byteObject * newObj;
-	int i;
+static struct object *
+newString(char * text)
+{
+	int size, i;
+	struct byteObject *newObj;
 
 	size = strlen(text);
 	newObj = binaryAlloc(size);
@@ -586,7 +621,8 @@ static struct object * newString(char * text)
 	return (struct object *) newObj;
 }
 
-static int parseString()
+static int
+parseString(void)
 {	
 	char *q;
 	
@@ -600,8 +636,10 @@ static int parseString()
 	return 1;	
 }
 
-int lookupInstance(struct object * class, char * text, int * low)
-{	struct object * var;
+int
+lookupInstance(struct object * class, char * text, int * low)
+{
+	struct object *var;
 	int size, i;
 
 	/* first check superclasses */
@@ -628,26 +666,30 @@ int lookupInstance(struct object * class, char * text, int * low)
 	return -1;
 }
 
-int superMessage = 0;
+static int superMessage = 0;
 
-char * lowConstants[4] = {"nil", "true", "false", 0};
+static char *lowConstants[4] = {"nil", "true", "false", 0};
 
-static int nameTerm(char * name)
-{	int i;
+static int
+nameTerm(char *name)
+{
+	int i;
 
 	/* see if temporary */
-	for (i = 0; i < tempTop; i++)
+	for (i = 0; i < tempTop; i++) {
 		if (strcmp(name, tempBuffer[i]) == 0) {
 			genInstruction(PushTemporary, i);
 			return 1;
-			}
+		}
+	}
 
 	/* see if argument */
-	for (i = 0; i < argumentTop; i++)
+	for (i = 0; i < argumentTop; i++) {
 		if (strcmp(name, argumentNames[i]) == 0) {
 			genInstruction(PushArgument, i);
 			return 1;
-			}
+		}
+	}
 	
 	/* see if super */	
 	if (strcmp(name, "super") == 0) {
@@ -655,40 +697,45 @@ static int nameTerm(char * name)
 		printf("setting super message\n");
 		superMessage = 1;
 		return 1;
-		}
+	}
 		
 	/* see if low constant */
-	for (i = 0; lowConstants[i]; i++)
+	for (i = 0; lowConstants[i]; i++) {
 		if (strcmp(lowConstants[i], name) == 0) {
 			genInstruction(PushConstant, 10+i);
 			return 1;
-			}
+		}
+	}
 
 	/* see if instance variable */
-	if (currentClass) {int low;
+	if (currentClass) {
+		int low;
+
 		i = lookupInstance(currentClass, name, &low);
 		if (i >= 0) {
 			genInstruction(PushInstance, i);
 			return 1;
-			}
 		}
+	}
 		
 	/* see if global */
-	{ struct object *glob = lookupGlobal(name, 1);
-	if (glob) {
-		genInstruction(PushLiteral, addLiteral(glob));
-		return 1;
+	{
+		struct object *glob = lookupGlobal(name, 1);
+
+		if (glob) {
+			genInstruction(PushLiteral, addLiteral(glob));
+			return 1;
 		}
 	}
 						
-	return parseError("unknown identifier");
+	return(parseError("unknown identifier"));
 }
 
 static int returnOp;
-
 static char * blockbackup;
 
-static int parseBlock()
+static int
+parseBlock(void)
 {	
 	int savedLocation, saveTop, argCount;
 	char * savestart;
@@ -703,14 +750,16 @@ static int parseBlock()
 	if (*p == ':') {
 		while(1) {
 			p++; skipSpaces();
-			if (! isIdentifierChar(*p)) return parseError("missing identifier");
-			if (readIdentifier()) return parseError("keyword illegal");
+			if (! isIdentifierChar(*p))
+				return parseError("missing identifier");
+			if (readIdentifier())
+				return parseError("keyword illegal");
 			addTemporary(tokenBuffer); argCount++;
 			if (*p == '|') break;
 			if (*p != ':') return parseError("missing colon:");
-			}
-		p++; skipSpaces();
 		}
+		p++; skipSpaces();
+	}
 	if (*p == ']') {
 		genInstruction(PushConstant, nilConst);
 	} else {
@@ -743,8 +792,10 @@ static int parseBlock()
 	return 1;
 }
 
-static int parseSymbol()
-{	char *q;
+static int
+parseSymbol(void)
+{
+	char *q;
 
 	p++;
 	for (q=tokenBuffer; isIdentifierChar(*p) || (*p == ':'); )
@@ -754,8 +805,10 @@ static int parseSymbol()
 	return 1;
 }
 
-static int parseChar()
-{	struct object * newObj;
+static int
+parseChar(void)
+{
+	struct object * newObj;
 
 	p++;
 	newObj = gcalloc(1);
@@ -766,9 +819,9 @@ static int parseChar()
 	return 1;
 }
 
-int parseTerm()
+static int
+parseTerm(void)
 {
-
 	/* make it so anything other than a block zeros out backup var */
 	blockbackup = 0;
 	superMessage = 0;
@@ -794,13 +847,13 @@ int parseTerm()
 	return parseError("illegal start of expression");
 }
 
-static char * unaryBuiltIns[] = 
-{"isNil", "notNil", 0};
-static char * binaryBuiltIns[] =
-{"<", "<=", "+", 0};
+static char *unaryBuiltIns[] = {"isNil", "notNil", 0};
+static char *binaryBuiltIns[] = {"<", "<=", "+", 0};
 
-static int parseUnaryContinuation()
-{	int litNumber, done;
+static int
+parseUnaryContinuation(void)
+{
+	int litNumber, done;
 	char *q;
 
 	while (isIdentifierChar(*p)) {
@@ -833,9 +886,10 @@ static int parseUnaryContinuation()
 	return 1;
 }
 
-static int parseBinaryContinuation()
-{	int messLiteral;
-	int i, done;
+static int
+parseBinaryContinuation(void)
+{
+	int messLiteral, i, done;
 	char messbuffer[80];
 
 	if (! parseUnaryContinuation()) return 0;
@@ -869,13 +923,13 @@ static int parseBinaryContinuation()
 	return 1;
 }
 
-static int optimizeBlock()
+static int
+optimizeBlock(void)
 {
 	if (*p != '[') {
 		if (! parseTerm()) return 0;
 		parseError("missing block as optimized block argument");
-		}
-	else {
+	} else {
 		p++; skipSpaces();
 		if (*p == ']') {
 			genInstruction(PushConstant, 0);
@@ -894,8 +948,10 @@ static int optimizeBlock()
 	return 1;
 }
 
-static int controlFlow(int opt1, char * rest, int opt2)
-{	int save1, save2;
+static int
+controlFlow(int opt1, char * rest, int opt2)
+{
+	int save1, save2;
 	char *q;
 
 	genInstruction(DoSpecial, opt1);
@@ -923,8 +979,10 @@ static int controlFlow(int opt1, char * rest, int opt2)
 }
 
 #ifdef LATER
-static int optimizeLoop(int branchInstruction)
-{	int L1, L2;
+static int
+optimizeLoop(int branchInstruction)
+{
+	int L1, L2;
 
 	/* back up to start of block and try again */
 	p = blockbackup;
@@ -946,8 +1004,10 @@ static int optimizeLoop(int branchInstruction)
 }
 #endif /* LATER */
 
-static int parseKeywordContinuation()
-{	int argCount, i, done, saveSuper;
+static int
+parseKeywordContinuation(void)
+{
+	int argCount, i, done, saveSuper;
 	char messageBuffer[100];
 	
 	saveSuper = superMessage;
@@ -1002,8 +1062,10 @@ static int parseKeywordContinuation()
 	return 1;
 }
 
-static int doAssignment(char * name)
-{	int i;
+static int
+doAssignment(char * name)
+{
+	int i;
 
 	for (i = 0; i < tempTop; i++)
 		if (strcmp(name, tempBuffer[i]) == 0) {
@@ -1024,7 +1086,8 @@ static int doAssignment(char * name)
 
 static int
 parseExpression(void)
-{	char nameBuffer[60];
+{
+	char nameBuffer[60];
 
 	if (isIdentifierChar(*p)) {
 		readIdentifier();
@@ -1035,15 +1098,19 @@ parseExpression(void)
 			return doAssignment(nameBuffer);
 			}
 		if (! nameTerm(tokenBuffer)) return 0;
+	} else {
+		if (! parseTerm()) {
+			return 0;
 		}
-	else
-		if (! parseTerm()) return 0;
-	if (! parseKeywordContinuation()) return 0;
+	}
+	if (!parseKeywordContinuation()) {
+		return 0;
+	}
 	while (*p == ';') {
 		p++; skipSpaces();
 		genInstruction(DoSpecial, Duplicate);
 		if (! parseKeywordContinuation()) return 0;
-		}
+	}
 	return 1;
 }
 
@@ -1061,7 +1128,8 @@ parseStatement(void)
 	return 1;
 }
 
-static int parseBody()
+static int
+parseBody(void)
 {
 	returnOp = StackReturn;
 	while (*p) {
@@ -1076,8 +1144,10 @@ static int parseBody()
 	return 1;
 }
 
-static int parseMethodHeader(struct object * theMethod)
-{	char messageBuffer[100], *q;
+static int
+parseMethodHeader(struct object * theMethod)
+{
+	char messageBuffer[100], *q;
 	int keyflag;
 
 	if (isIdentifierChar(*p)) {
@@ -1116,7 +1186,8 @@ static int parseMethodHeader(struct object * theMethod)
 	return 1;
 }
 
-static int parseTemporaries()
+static int
+parseTemporaries(void)
 {	
 	tempTop = 0; maxTemp = 0;
 	if (*p != '|') return 1;
@@ -1130,10 +1201,13 @@ static int parseTemporaries()
 	return 1;
 }
 
-static int parseMethod(struct object * theMethod)
+static int
+parseMethod(struct object * theMethod)
 {
-	if (! parseMethodHeader(theMethod)) return 0;
-	if (! parseTemporaries()) return 0;
+	if (! parseMethodHeader(theMethod))
+		return 0;
+	if (! parseTemporaries())
+		return 0;
 	if (parseBody()) {
 		theMethod->data[literalsInMethod] = buildLiteralArray();
 		theMethod->data[byteCodesInMethod] = buildByteArray();
@@ -1142,7 +1216,7 @@ static int parseMethod(struct object * theMethod)
 		theMethod->data[classInMethod] = currentClass;
 		theMethod->data[textInMethod] = newString(inputBuffer);
 		return 1;
-		}		
+	}		
 	return 0;
 }
 
@@ -1152,9 +1226,9 @@ static int parseMethod(struct object * theMethod)
 /* ------------------------------------------------------------- */
 
 /*	read the expression beyond the begin statement */
-static struct object * BeginCommand()
+static struct object *
+BeginCommand(void)
 {
-
 	struct object * bootMethod;
 
 	byteTop = 0;
@@ -1177,6 +1251,7 @@ static struct object * BeginCommand()
 
 	return bootMethod;
 }
+
 /*
  * insert()
  *	Insert an element in the array at the given position
@@ -1292,25 +1367,23 @@ newOrderedArray(void)
 }
 
 static struct object * 
-	treeMethodInsert(struct object * base, struct object * anode)
+treeMethodInsert(struct object * base, struct object * anode)
 {
 	if ((base == 0) || (base == nilObject))
 		return anode;
-	if (symbolCmp(
-		  anode->data[valueInNode]->data[nameInMethod],
-		  base->data[valueInNode]->data[nameInMethod]) < 0) {
+	if (symbolCmp(anode->data[valueInNode]->data[nameInMethod],
+			base->data[valueInNode]->data[nameInMethod]) < 0) {
 		base->data[leftInNode] = 
 			treeMethodInsert(base->data[leftInNode], anode);
-			}
-	else {
+	} else {
 		base->data[rightInNode] = 
 			treeMethodInsert(base->data[rightInNode], anode);
-			}
+	}
 	return base;
-
 }
 
-struct object * associationInsert(struct object * base, struct object * symNode)
+struct object *
+associationInsert(struct object * base, struct object * symNode)
 {
 	if (base == nilObject)
 		return symNode;
@@ -1325,10 +1398,10 @@ struct object * associationInsert(struct object * base, struct object * symNode)
 	return base;
 }
 
-static void MethodCommand()
+static void
+MethodCommand(void)
 {	
-	struct object * theMethod;
-	struct object * tree;
+	struct object *theMethod, *tree;
 
 	/* read class name */
 	readIdentifier();
@@ -1356,25 +1429,24 @@ static void MethodCommand()
 			newNode(
 			newAssociation(theMethod->data[nameInMethod], 
 				theMethod), nilObject, nilObject));
-		}
+	}
 }
 
-static void ClassCommand()
+static void
+ClassCommand(void)
 {	
-	struct object * nClass;
-	struct object * supClass;
-	struct object * instClass;
+	struct object *nClass, *supClass, *instClass;
 	int instsize;
 	
 	/* read the class */
 	readIdentifier();
 	nClass = lookupGlobal(tokenBuffer, 1);
 	printf("Class %s\n", tokenBuffer);
-	if (! nClass) {
+	if (!nClass) {
 		nClass = newClass(tokenBuffer);
 		nClass->data[nameInClass] = newSymbol(tokenBuffer);
 		addGlobalName(tokenBuffer, nClass);
-		}
+	}
 
 	/* now read the instance class */
 	readIdentifier();
@@ -1400,12 +1472,13 @@ static void ClassCommand()
 		}
 		readIdentifier();
 		addLiteral(newSymbol(tokenBuffer));
-		}
+	}
 
 	instsize = litTop;
-	if (supClass != nilObject)
+	if (supClass != nilObject) {
 		instsize += 
 			integerValue(supClass->data[instanceSizeInClass]);
+	}
 	nClass->data[instanceSizeInClass] = newInteger(instsize); 
 	nClass->data[variablesInClass] = buildLiteralArray();
 			/* make a tree for new methods */
@@ -1420,7 +1493,8 @@ static void ClassCommand()
 static struct object * writtenObjects[imageMaxNumberOfObjects];
 static int imageTop = 0;
 
-static void writeWord(int i, FILE * fp)
+static void
+writeWord(int i, FILE * fp)
 {
 	if (i >= 255) {
 		fputc(255, fp);
@@ -1430,9 +1504,10 @@ static void writeWord(int i, FILE * fp)
 	}
 }
 
-static void imageOut(FILE * fp, struct object * obj)
-{	int i;
-	int size;
+static void
+imageOut(FILE * fp, struct object * obj)
+{
+	int i, size;
 
 	if (imageTop > imageMaxNumberOfObjects) {
 		fprintf(stderr,"too many indirect objects\n");
@@ -1509,7 +1584,8 @@ static void imageOut(FILE * fp, struct object * obj)
 /*	fix up symbol tables   */
 /* ------------------------------------------------------------- */
 
-struct object * symbolTreeInsert(struct object * base, struct object * symNode)
+struct object *
+symbolTreeInsert(struct object * base, struct object * symNode)
 {
 	if (base == nilObject)
 		return symNode;
@@ -1522,7 +1598,9 @@ struct object * symbolTreeInsert(struct object * base, struct object * symNode)
 	return base;
 }
 
-struct object * fixSymbols() {
+static struct object *
+fixSymbols(void)
+{
 	struct object * t;
 	int i;
 
@@ -1533,9 +1611,8 @@ struct object * fixSymbols() {
 	return t;
 }
 
-
-void
-fixGlobals()
+static void
+fixGlobals(void)
 {
 	struct object *t;
 	int i;
@@ -1585,9 +1662,10 @@ checkGlobals(void)
 /* ------------------------------------------------------------- */
 
 int
-main()
-{	FILE *fd;
-	struct object * bootMethod = 0;
+main(void)
+{
+	FILE *fd;
+	struct object *bootMethod = 0;
 	int i;
 
 		/* big bang -- create the first classes */

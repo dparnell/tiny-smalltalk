@@ -765,7 +765,7 @@ parseBlock(void)
 		returnOp = saveReturnOp;
 	}
 	p++; skipSpaces();	/* skip over ] */
-	genInstruction(DoSpecial, returnOp);
+	genInstruction(DoSpecial, StackReturn);
 	byteBuffer[savedLocation] = byteTop;
 	tempTop = saveTop;
 

@@ -249,7 +249,7 @@ do_Integer(int op, struct object *low, struct object *high)
 int
 execute(struct object *aProcess)
 {   
-    int low, high, x, stackTop, bytePointer, lastPrimitiveNumber;
+    int low, high, x, stackTop, bytePointer;
     struct object *context, *method, *arguments, *temporaries,
 	    *instanceVariables, *literals, *stack,
 	    *returnedValue = nilObject, *messageSelector,
@@ -277,791 +277,790 @@ execute(struct object *aProcess)
     temporaries = instanceVariables = arguments = literals = 0;
 
 
-    while (1) {
+    for (;;) {
         low = (high = bp[bytePointer++] ) & 0x0F;
         high >>= 4;
-        if (high == 0) {
+        if (high == Extended) {
             high = low;
             low = bp[bytePointer++] ;
-            }
+        }
 
-        switch(high) {
+        switch (high) {
 
-            case PushInstance:
-		DBG1("PushInstance", low);
-		if (! arguments) 
-			arguments = context->data[argumentsInContext];
-		if (! instanceVariables)
-			instanceVariables = 
-				arguments->data[receiverInArguments];
-		stack->data[stackTop++] = instanceVariables->data[low];
-                break;
+	case PushInstance:
+	    DBG1("PushInstance", low);
+	    if (! arguments) 
+		    arguments = context->data[argumentsInContext];
+	    if (! instanceVariables)
+		    instanceVariables = 
+			    arguments->data[receiverInArguments];
+	    stack->data[stackTop++] = instanceVariables->data[low];
+	    break;
 
-            case PushArgument:
-		DBG1("PushArgument", low);
-		if (! arguments) 
-			arguments = context->data[argumentsInContext];
-		stack->data[stackTop++] = arguments->data[low];
-                break;
+	case PushArgument:
+	    DBG1("PushArgument", low);
+	    if (! arguments) 
+		    arguments = context->data[argumentsInContext];
+	    stack->data[stackTop++] = arguments->data[low];
+	    break;
 
-	    case PushTemporary:
-		DBG1("PushTemporary", low);
-		if (! temporaries)
-			temporaries = context->data[temporariesInContext];
-		stack->data[stackTop++] = temporaries->data[low];
-		break;
+	case PushTemporary:
+	    DBG1("PushTemporary", low);
+	    if (! temporaries)
+		    temporaries = context->data[temporariesInContext];
+	    stack->data[stackTop++] = temporaries->data[low];
+	    break;
 
-            case PushLiteral:
-		DBG1("PushLiteral", low);
-		if (! literals) 
-			literals = method->data[literalsInMethod];
-		stack->data[stackTop++] = literals->data[low];
-                break;
+	case PushLiteral:
+	    DBG1("PushLiteral", low);
+	    if (! literals) 
+		    literals = method->data[literalsInMethod];
+	    stack->data[stackTop++] = literals->data[low];
+	    break;
 
-            case PushConstant:
-		DBG1("PushConstant", low);
-		switch(low) {
-			case 0: case 1: case 2: case 3: case 4: 
-			case 5: case 6: case 7: case 8: case 9:
-				stack->data[stackTop++] = newInteger(low);
-				break;
-			case nilConst: 
-				stack->data[stackTop++] = nilObject; break;
-			case trueConst: 
-				stack->data[stackTop++] = trueObject; break;
-			case falseConst: 
-				stack->data[stackTop++] = falseObject; break;
-			default:
-				sysError("unknown push constant", low);
-			}
-                break;
+	case PushConstant:
+	    DBG1("PushConstant", low);
+	    switch(low) {
+		    case 0: case 1: case 2: case 3: case 4: 
+		    case 5: case 6: case 7: case 8: case 9:
+			    stack->data[stackTop++] = newInteger(low);
+			    break;
+		    case nilConst: 
+			    stack->data[stackTop++] = nilObject; break;
+		    case trueConst: 
+			    stack->data[stackTop++] = trueObject; break;
+		    case falseConst: 
+			    stack->data[stackTop++] = falseObject; break;
+		    default:
+			    sysError("unknown push constant", low);
+		    }
+	    break;
 
-	    case PushBlock:
-		DBG0("PushBlock");
-			/* create a block object */
-			/* low is arg location */
-			/* next byte is goto value */
-		high = bp[bytePointer++];
-		rootStack[rootTop++] = context;
-		op = rootStack[rootTop++] = 
-		 gcalloc(x = integerValue(method->data[stackSizeInMethod]));
-		op->class = NULL;
-		bzero(bytePtr(op), x * BytesPerWord);
-		returnedValue = gcalloc(blockSize);
-		returnedValue->class = BlockClass;
-		returnedValue->data[bytePointerInContext] =
-		returnedValue->data[stackTopInBlock] = 
-		returnedValue->data[previousContextInBlock] = NULL;
-		returnedValue->data[bytePointerInBlock] =
-			newInteger(bytePointer);
-		returnedValue->data[argumentLocationInBlock] = newInteger(low);
-		returnedValue->data[stackInBlock] = rootStack[--rootTop];
-		context = rootStack[--rootTop];
-		if (CLASS(context) == BlockClass) {
-			returnedValue->data[creatingContextInBlock] =
-				context->data[creatingContextInBlock];
-		} else {
-			returnedValue->data[creatingContextInBlock] = context;
-		}
-		method = returnedValue->data[methodInBlock] = 
-			context->data[methodInBlock];
-		arguments = returnedValue->data[argumentsInBlock] =
-			context->data[argumentsInBlock];
-		temporaries = returnedValue->data[temporariesInBlock] =
-			context->data[temporariesInBlock];
-		stack = context->data[stackInContext];
-		bp = bytePtr(method->data[byteCodesInMethod]);
-		stack->data[stackTop++] = returnedValue;
-			/* zero these out just in case GC occurred */
-		literals = instanceVariables = 0;
-		bytePointer = high;
-		break;
+	case PushBlock:
+	    DBG0("PushBlock");
+		    /* create a block object */
+		    /* low is arg location */
+		    /* next byte is goto value */
+	    high = bp[bytePointer++];
+	    rootStack[rootTop++] = context;
+	    op = rootStack[rootTop++] = 
+	     gcalloc(x = integerValue(method->data[stackSizeInMethod]));
+	    op->class = NULL;
+	    bzero(bytePtr(op), x * BytesPerWord);
+	    returnedValue = gcalloc(blockSize);
+	    returnedValue->class = BlockClass;
+	    returnedValue->data[bytePointerInContext] =
+	    returnedValue->data[stackTopInBlock] = 
+	    returnedValue->data[previousContextInBlock] = NULL;
+	    returnedValue->data[bytePointerInBlock] =
+		    newInteger(bytePointer);
+	    returnedValue->data[argumentLocationInBlock] = newInteger(low);
+	    returnedValue->data[stackInBlock] = rootStack[--rootTop];
+	    context = rootStack[--rootTop];
+	    if (CLASS(context) == BlockClass) {
+		    returnedValue->data[creatingContextInBlock] =
+			    context->data[creatingContextInBlock];
+	    } else {
+		    returnedValue->data[creatingContextInBlock] = context;
+	    }
+	    method = returnedValue->data[methodInBlock] = 
+		    context->data[methodInBlock];
+	    arguments = returnedValue->data[argumentsInBlock] =
+		    context->data[argumentsInBlock];
+	    temporaries = returnedValue->data[temporariesInBlock] =
+		    context->data[temporariesInBlock];
+	    stack = context->data[stackInContext];
+	    bp = bytePtr(method->data[byteCodesInMethod]);
+	    stack->data[stackTop++] = returnedValue;
+		    /* zero these out just in case GC occurred */
+	    literals = instanceVariables = 0;
+	    bytePointer = high;
+	    break;
 
-            case AssignInstance:
-		DBG1("AssignInstance", low);
-		if (!arguments)  {
-			arguments = context->data[argumentsInContext];
-		}
-		if (!instanceVariables) {
-			instanceVariables = 
-				arguments->data[receiverInArguments];
-				/* don't pop stack, leave result there */
-		}
-		instanceVariables->data[low] = stack->data[stackTop-1];
+	case AssignInstance:
+	    DBG1("AssignInstance", low);
+	    if (!arguments)  {
+		    arguments = context->data[argumentsInContext];
+	    }
+	    if (!instanceVariables) {
+		    instanceVariables = 
+			    arguments->data[receiverInArguments];
+			    /* don't pop stack, leave result there */
+	    }
+	    instanceVariables->data[low] = stack->data[stackTop-1];
 
-		/*
-		 * If changing a static area, need to add to roots
-		 */
-		if (!isDynamicMemory(instanceVariables) 
-				&& isDynamicMemory(stack->data[stackTop-1])) {
-			addStaticRoot(&instanceVariables->data[low]);
-		}
-                break;
+	    /*
+	     * If changing a static area, need to add to roots
+	     */
+	    if (!isDynamicMemory(instanceVariables) 
+			    && isDynamicMemory(stack->data[stackTop-1])) {
+		    addStaticRoot(&instanceVariables->data[low]);
+	    }
+	    break;
 
-            case AssignTemporary:
-	    	DBG1("AssignTemporary", low);
-		if (! temporaries)
-			temporaries = context->data[temporariesInContext];
-		temporaries->data[low] = stack->data[stackTop-1];
-                break;
+	case AssignTemporary:
+	    DBG1("AssignTemporary", low);
+	    if (! temporaries)
+		    temporaries = context->data[temporariesInContext];
+	    temporaries->data[low] = stack->data[stackTop-1];
+	    break;
 
-            case MarkArguments:
-		DBG1("MarkArguments", low);
-		rootStack[rootTop++] = context;
-		arguments = gcalloc(low);
-		arguments->class = ArrayClass;
-		if (context != rootStack[--rootTop]) { /* gc has occurred */
-				/* reload context */
-			instanceVariables = temporaries = literals = 0;
-			context = rootStack[rootTop];
-			method = context->data[methodInContext];
-			bp = bytePtr(method->data[byteCodesInMethod]);
-			stack = context->data[stackInContext];
-		}
-		/* now load new argument array */
-		while (low > 0) {
-			arguments->data[--low] = stack->data[--stackTop];
-		}
-		stack->data[stackTop++] = arguments;
-		arguments = 0;
-                break;
+	case MarkArguments:
+	    DBG1("MarkArguments", low);
+	    rootStack[rootTop++] = context;
+	    arguments = gcalloc(low);
+	    arguments->class = ArrayClass;
+	    if (context != rootStack[--rootTop]) { /* gc has occurred */
+			    /* reload context */
+		    instanceVariables = temporaries = literals = 0;
+		    context = rootStack[rootTop];
+		    method = context->data[methodInContext];
+		    bp = bytePtr(method->data[byteCodesInMethod]);
+		    stack = context->data[stackInContext];
+	    }
+	    /* now load new argument array */
+	    while (low > 0) {
+		    arguments->data[--low] = stack->data[--stackTop];
+	    }
+	    stack->data[stackTop++] = arguments;
+	    arguments = 0;
+	    break;
 
-            case SendMessage: 
-		if (! literals) 
-			literals = method->data[literalsInMethod];
-		messageSelector = literals->data[low];
-		arguments = stack->data[--stackTop];
+	case SendMessage: 
+	    if (! literals) 
+		    literals = method->data[literalsInMethod];
+	    messageSelector = literals->data[low];
+	    arguments = stack->data[--stackTop];
 
-	     findMethodFromSymbol:
-		receiverClass = CLASS(arguments->data[receiverInArguments]);
-		DBGS("SendMessage",
-			bytePtr(receiverClass->data[nameInClass]),
-			bytePtr(messageSelector));
-	     checkCache:
-		low = (((uint) messageSelector) +
-			((uint) receiverClass)) % cacheSize;
-		if ((cache[low].name == messageSelector) &&
-		    (cache[low].class == receiverClass)) {
-			method = cache[low].method;
-			cacheHit++;
-		} else {
-			cacheMiss++;
-			method = lookupMethod(messageSelector, receiverClass);
-			if (! method) {
-				aProcess = rootStack[--rootTop];
-				aProcess->data[contextInProcess] = context;
-				aProcess->data[resultInProcess] = messageSelector;
-				return 3;
-				}
-			cache[low].name = messageSelector;
-			cache[low].class = receiverClass;
-			cache[low].method = method;
-		}
+	 findMethodFromSymbol:
+	    receiverClass = CLASS(arguments->data[receiverInArguments]);
+	    DBGS("SendMessage",
+		    bytePtr(receiverClass->data[nameInClass]),
+		    bytePtr(messageSelector));
+	 checkCache:
+	    low = (((uint) messageSelector) +
+		    ((uint) receiverClass)) % cacheSize;
+	    if ((cache[low].name == messageSelector) &&
+		(cache[low].class == receiverClass)) {
+		    method = cache[low].method;
+		    cacheHit++;
+	    } else {
+		    cacheMiss++;
+		    method = lookupMethod(messageSelector, receiverClass);
+		    if (! method) {
+			    aProcess = rootStack[--rootTop];
+			    aProcess->data[contextInProcess] = context;
+			    aProcess->data[resultInProcess] = messageSelector;
+			    return 3;
+			    }
+		    cache[low].name = messageSelector;
+		    cache[low].class = receiverClass;
+		    cache[low].method = method;
+	    }
 
-		/* see if we can optimize tail call */
-		if (bp[bytePointer] == (DoSpecial * 16 + StackReturn)) {
-			high = 1;
-		} else if (bp[bytePointer] ==
-				(DoSpecial * 16 + BlockReturn)) {
-			high = 2;
-		} else {
-			high = 0;
-		}
+	    /* see if we can optimize tail call */
+	    if (bp[bytePointer] == (DoSpecial * 16 + StackReturn)) {
+		    high = 1;
+	    } else if (bp[bytePointer] ==
+			    (DoSpecial * 16 + BlockReturn)) {
+		    high = 2;
+	    } else {
+		    high = 0;
+	    }
 
-		/* build temporaries for new context */
-		rootStack[rootTop++] = arguments;
-		rootStack[rootTop++] = method;
-		rootStack[rootTop++] = context;
-		low = integerValue(method->data[temporarySizeInMethod]);
-		op = rootStack[rootTop++] = 
-		 gcalloc(x = integerValue(method->data[stackSizeInMethod]));
-		op->class = NULL;
-		bzero(bytePtr(op), x * BytesPerWord);
-		if (low > 0) {
-			int i;
+	    /* build temporaries for new context */
+	    rootStack[rootTop++] = arguments;
+	    rootStack[rootTop++] = method;
+	    rootStack[rootTop++] = context;
+	    low = integerValue(method->data[temporarySizeInMethod]);
+	    op = rootStack[rootTop++] = 
+	     gcalloc(x = integerValue(method->data[stackSizeInMethod]));
+	    op->class = NULL;
+	    bzero(bytePtr(op), x * BytesPerWord);
+	    if (low > 0) {
+		    int i;
 
-			temporaries = gcalloc(low);
-			temporaries->class = ArrayClass;
-			for (i = 0; i < low; i++) {
-				temporaries->data[i] = nilObject;
-			}
-			rootStack[rootTop++] = temporaries; /* temporaries */
-		} else {
-			rootStack[rootTop++] = NULL;	/* why bother */
-		}
-		context = rootStack[rootTop-3];
-		context->data[stackTopInContext] = newInteger(stackTop);
-		context->data[bytePointerInContext] = newInteger(bytePointer);
+		    temporaries = gcalloc(low);
+		    temporaries->class = ArrayClass;
+		    for (i = 0; i < low; i++) {
+			    temporaries->data[i] = nilObject;
+		    }
+		    rootStack[rootTop++] = temporaries; /* temporaries */
+	    } else {
+		    rootStack[rootTop++] = NULL;	/* why bother */
+	    }
+	    context = rootStack[rootTop-3];
+	    context->data[stackTopInContext] = newInteger(stackTop);
+	    context->data[bytePointerInContext] = newInteger(bytePointer);
 
-		/* now go off and build the new context */
-		context = gcalloc(contextSize);
-		context->class = ContextClass;
-		temporaries = context->data[temporariesInContext] 
-			= rootStack[--rootTop];
-		stack = context->data[stackInContext] = rootStack[--rootTop];
-		stack->class = ArrayClass;
-		context->data[stackTopInContext] = newInteger(0);
-		stackTop = 0;
-		context->data[previousContextInContext] = rootStack[--rootTop];
-		if (high == 1) {
-			context->data[previousContextInContext] =
-			context->data[previousContextInContext]->
-				data[previousContextInContext];
-		} else if (high == 2) {
-			context->data[previousContextInContext] =
-			context->data[previousContextInContext]->
-				data[creatingContextInBlock]->
-				data[previousContextInContext];
-		}
-		method = context->data[methodInContext] = rootStack[--rootTop];
-		arguments = context->data[argumentsInContext] 
-			= rootStack[--rootTop];
-		instanceVariables = literals = 0;
-		context->data[bytePointerInContext] = newInteger(0);
-		bytePointer = 0;
-		bp = (char *) method->data[byteCodesInMethod]->data;
-			/* now go execute new method */
-		break;
+	    /* now go off and build the new context */
+	    context = gcalloc(contextSize);
+	    context->class = ContextClass;
+	    temporaries = context->data[temporariesInContext] 
+		    = rootStack[--rootTop];
+	    stack = context->data[stackInContext] = rootStack[--rootTop];
+	    stack->class = ArrayClass;
+	    context->data[stackTopInContext] = newInteger(0);
+	    stackTop = 0;
+	    context->data[previousContextInContext] = rootStack[--rootTop];
+	    if (high == 1) {
+		    context->data[previousContextInContext] =
+		    context->data[previousContextInContext]->
+			    data[previousContextInContext];
+	    } else if (high == 2) {
+		    context->data[previousContextInContext] =
+		    context->data[previousContextInContext]->
+			    data[creatingContextInBlock]->
+			    data[previousContextInContext];
+	    }
+	    method = context->data[methodInContext] = rootStack[--rootTop];
+	    arguments = context->data[argumentsInContext] 
+		    = rootStack[--rootTop];
+	    instanceVariables = literals = 0;
+	    context->data[bytePointerInContext] = newInteger(0);
+	    bytePointer = 0;
+	    bp = (char *) method->data[byteCodesInMethod]->data;
+		    /* now go execute new method */
+	    break;
 
-	    case SendUnary:	/* optimize certain unary messages */
-		DBG1("SendUnary", low);
-		returnedValue = stack->data[--stackTop];
-		switch(low) {
-			case 0:	/* isNil */
-				if (returnedValue == nilObject)
-					returnedValue = trueObject;
-				else
-					returnedValue = falseObject;
-				break;
-			case 1: /* notNil */
-				if (returnedValue == nilObject)
-					returnedValue = falseObject;
-				else
-					returnedValue = trueObject;
-				break;
-			default:
-				sysError("unimplemented SendUnary", low);
-			}
-		stack->data[stackTop++] = returnedValue;
-		break;
+	case SendUnary:	/* optimize certain unary messages */
+	    DBG1("SendUnary", low);
+	    returnedValue = stack->data[--stackTop];
+	    switch(low) {
+		    case 0:	/* isNil */
+			    if (returnedValue == nilObject)
+				    returnedValue = trueObject;
+			    else
+				    returnedValue = falseObject;
+			    break;
+		    case 1: /* notNil */
+			    if (returnedValue == nilObject)
+				    returnedValue = falseObject;
+			    else
+				    returnedValue = trueObject;
+			    break;
+		    default:
+			    sysError("unimplemented SendUnary", low);
+		    }
+	    stack->data[stackTop++] = returnedValue;
+	    break;
 
-	    case SendBinary:	/* optimize certain binary messages */
-		DBG1("SendBinary", low);
-		if (IS_SMALLINT(stack->data[stackTop-1])
-			 && IS_SMALLINT(stack->data[stackTop-2])) {
-			int i, j;
-			j = integerValue(stack->data[--stackTop]);
-			i = integerValue(stack->data[--stackTop]);
-				/* can only do operations that won't */
-				/* trigger garbage collection */
-			switch(low) {
-			case 0:	/* < */
-				if (i < j) {
-					returnedValue = trueObject;
-				} else {
-					returnedValue = falseObject;
-				}
-				break;
-			case 1:	/* <= */
-				if (i <= j) {
-					returnedValue = trueObject;
-				} else {
-					returnedValue = falseObject;
-				}
-				break;
-			case 2:	/* + */
-				/* no possibility of garbage col */
-				returnedValue = newInteger(i+j);
-				break;
-			}
-			stack->data[stackTop++] = returnedValue;
-			break;
-		}
+	case SendBinary:	/* optimize certain binary messages */
+	    DBG1("SendBinary", low);
+	    if (IS_SMALLINT(stack->data[stackTop-1])
+		     && IS_SMALLINT(stack->data[stackTop-2])) {
+		    int i, j;
+		    j = integerValue(stack->data[--stackTop]);
+		    i = integerValue(stack->data[--stackTop]);
+			    /* can only do operations that won't */
+			    /* trigger garbage collection */
+		    switch(low) {
+		    case 0:	/* < */
+			    if (i < j) {
+				    returnedValue = trueObject;
+			    } else {
+				    returnedValue = falseObject;
+			    }
+			    break;
+		    case 1:	/* <= */
+			    if (i <= j) {
+				    returnedValue = trueObject;
+			    } else {
+				    returnedValue = falseObject;
+			    }
+			    break;
+		    case 2:	/* + */
+			    /* no possibility of garbage col */
+			    returnedValue = newInteger(i+j);
+			    break;
+		    }
+		    stack->data[stackTop++] = returnedValue;
+		    break;
+	    }
 
-		/* not integers, do as message send */
-		rootStack[rootTop++] = context;
-		arguments = gcalloc(2);
-		arguments->class = ArrayClass;
-		if (context != rootStack[--rootTop]) { /* gc has occurred */
-				/* reload context */
-			instanceVariables = temporaries = literals = 0;
-			context = rootStack[rootTop];
-			method = context->data[methodInContext];
-			bp = bytePtr(method->data[byteCodesInMethod]);
-			stack = context->data[stackInContext];
-		}
+	    /* not integers, do as message send */
+	    rootStack[rootTop++] = context;
+	    arguments = gcalloc(2);
+	    arguments->class = ArrayClass;
+	    if (context != rootStack[--rootTop]) { /* gc has occurred */
+			    /* reload context */
+		    instanceVariables = temporaries = literals = 0;
+		    context = rootStack[rootTop];
+		    method = context->data[methodInContext];
+		    bp = bytePtr(method->data[byteCodesInMethod]);
+		    stack = context->data[stackInContext];
+	    }
 
-		/* now load new argument array */
-		arguments->data[1] = stack->data[--stackTop];
-		arguments->data[0] = stack->data[--stackTop];
-			/* now go send message */
-		messageSelector = binaryMessages[low];
-		goto findMethodFromSymbol;
+	    /* now load new argument array */
+	    arguments->data[1] = stack->data[--stackTop];
+	    arguments->data[0] = stack->data[--stackTop];
+		    /* now go send message */
+	    messageSelector = binaryMessages[low];
+	    goto findMethodFromSymbol;
 
 /*
- * Pull two integers of the required class as arguments from stack
- */
+* Pull two integers of the required class as arguments from stack
+*/
 #define GET_HIGH_LOW() \
-	op = stack->data[--stackTop]; \
-	if (!IS_SMALLINT(op)) { \
-		stackTop -= 1; \
-		goto failPrimitive; \
-	} \
-	low = integerValue(op); \
-	op = stack->data[--stackTop]; \
-	if (!IS_SMALLINT(op)) { \
-		goto failPrimitive; \
-	} \
-	high = integerValue(op);
+    op = stack->data[--stackTop]; \
+    if (!IS_SMALLINT(op)) { \
+	    stackTop -= 1; \
+	    goto failPrimitive; \
+    } \
+    low = integerValue(op); \
+    op = stack->data[--stackTop]; \
+    if (!IS_SMALLINT(op)) { \
+	    goto failPrimitive; \
+    } \
+    high = integerValue(op);
 
-            case DoPrimitive:
-			/* low is argument count */
-			/* next byte is primitive number */
-		high = bp[bytePointer++];
-		DBG1("DoPrimitive", high);
-		rootStack[rootTop++] = context;
-		lastPrimitiveNumber = high;
-		switch (high) {
-		case 1:		/* object identity */
-			returnedValue = stack->data[--stackTop];
-			if (returnedValue == stack->data[--stackTop]) {
-				returnedValue = trueObject;
-			} else {
-				returnedValue = falseObject;
-			}
-			break;
+	case DoPrimitive:
+		    /* low is argument count */
+		    /* next byte is primitive number */
+	    high = bp[bytePointer++];
+	    DBG1("DoPrimitive", high);
+	    rootStack[rootTop++] = context;
+	    switch (high) {
+	    case 1:		/* object identity */
+		    returnedValue = stack->data[--stackTop];
+		    if (returnedValue == stack->data[--stackTop]) {
+			    returnedValue = trueObject;
+		    } else {
+			    returnedValue = falseObject;
+		    }
+		    break;
 
-		case 2:		/* object class */
-			returnedValue = stack->data[--stackTop];
-			returnedValue = CLASS(returnedValue);
-			break;
+	    case 2:		/* object class */
+		    returnedValue = stack->data[--stackTop];
+		    returnedValue = CLASS(returnedValue);
+		    break;
 
-		case 3:	/* print a single character */
-			low = integerValue(stack->data[--stackTop]);
-			putchar(low); /* fflush(stdout); */
-			returnedValue = nilObject;
-			break;
+	    case 3:	/* print a single character */
+		    low = integerValue(stack->data[--stackTop]);
+		    putchar(low); /* fflush(stdout); */
+		    returnedValue = nilObject;
+		    break;
 
-		case 4:	/* object size */
-			returnedValue = stack->data[--stackTop];
-			high = returnedValue->size >> 2;
-			returnedValue = newInteger(high);
-			break;
+	    case 4:	/* object size */
+		    returnedValue = stack->data[--stackTop];
+		    high = returnedValue->size >> 2;
+		    returnedValue = newInteger(high);
+		    break;
 
-		case 5:		/* Array at put */
-			op = stack->data[--stackTop];
-			if (!IS_SMALLINT(op)) {
-				stackTop -= 2;
-				goto failPrimitive;
-			}
-			low = integerValue(op)-1;
-			returnedValue = stack->data[--stackTop];
-			/* Bounds check */
-			if ((low < 0) ||
-			 (low >= (returnedValue->size >> 2))) {
-				stackTop -= 1;
-				goto failPrimitive;
-			}
-			returnedValue->data[low] 
-				= stack->data[--stackTop];
-			/*
-			 * If putting a non-static pointer
-			 * into an array in static memory,
-			 * register it for GC.
-			 */
-			if (!isDynamicMemory(returnedValue) 
-					&& isDynamicMemory(
-					 stack->data[stackTop])) {
-				addStaticRoot(
-				 &returnedValue->data[low]);
-			}
-			break;
+	    case 5:		/* Array at put */
+		    op = stack->data[--stackTop];
+		    if (!IS_SMALLINT(op)) {
+			    stackTop -= 2;
+			    goto failPrimitive;
+		    }
+		    low = integerValue(op)-1;
+		    returnedValue = stack->data[--stackTop];
+		    /* Bounds check */
+		    if ((low < 0) ||
+		     (low >= (returnedValue->size >> 2))) {
+			    stackTop -= 1;
+			    goto failPrimitive;
+		    }
+		    returnedValue->data[low] 
+			    = stack->data[--stackTop];
+		    /*
+		     * If putting a non-static pointer
+		     * into an array in static memory,
+		     * register it for GC.
+		     */
+		    if (!isDynamicMemory(returnedValue) 
+				    && isDynamicMemory(
+				     stack->data[stackTop])) {
+			    addStaticRoot(
+			     &returnedValue->data[low]);
+		    }
+		    break;
 
-		case 6:		/* new process execute */
-			low = execute(stack->data[--stackTop]);
+	    case 6:		/* new process execute */
+		    low = execute(stack->data[--stackTop]);
 
-			/* got to load everything else */
-			returnedValue = newInteger(low);
-			break;
+		    /* got to load everything else */
+		    returnedValue = newInteger(low);
+		    break;
 
-		case 7: 	/* new object allocation */
-			low = integerValue(stack->data[--stackTop]);
-			rootStack[rootTop++] = stack->data[--stackTop];
-			returnedValue = gcalloc(low);
-			returnedValue->class = rootStack[--rootTop];
-			while (low > 0) {
-				returnedValue->data[--low] = nilObject;
-			}
-			break;
+	    case 7: 	/* new object allocation */
+		    low = integerValue(stack->data[--stackTop]);
+		    rootStack[rootTop++] = stack->data[--stackTop];
+		    returnedValue = gcalloc(low);
+		    returnedValue->class = rootStack[--rootTop];
+		    while (low > 0) {
+			    returnedValue->data[--low] = nilObject;
+		    }
+		    break;
 
-		case 8:	/* block invocation */
-			/* low holds number of arguments */
-			returnedValue = stack->data[--stackTop];
-				/* put arguments in place */
-			high = integerValue(returnedValue->data[
-					argumentLocationInBlock]);
-			temporaries = returnedValue->data[temporariesInBlock];
-			low -= 2;
-			x = (temporaries ?
-				((temporaries->size >> 2) - high) : 0);
-			if (low >= x) {
-				stackTop -= (low+1);
-				goto failPrimitive;
-			}
-			while (low >= 0) {
-				temporaries->data[high + low] =
-					stack->data[--stackTop];
-				low--;
-			}
-			returnedValue->data[previousContextInBlock] =
-				context->data[previousContextInContext];
-			context = returnedValue;
-			arguments = instanceVariables =
-				literals = 0;
-			stack = context->data[stackInContext];
-			stackTop = 0;
-			method = context->data[methodInBlock];
-			bp = bytePtr(method->data[byteCodesInMethod]);
-			bytePointer = integerValue(
-				context->data[bytePointerInBlock]);
-			--rootTop;
-			goto endPrimitive;
+	    case 8:	/* block invocation */
+		    /* low holds number of arguments */
+		    returnedValue = stack->data[--stackTop];
+			    /* put arguments in place */
+		    high = integerValue(returnedValue->data[
+				    argumentLocationInBlock]);
+		    temporaries = returnedValue->data[temporariesInBlock];
+		    low -= 2;
+		    x = (temporaries ?
+			    ((temporaries->size >> 2) - high) : 0);
+		    if (low >= x) {
+			    stackTop -= (low+1);
+			    goto failPrimitive;
+		    }
+		    while (low >= 0) {
+			    temporaries->data[high + low] =
+				    stack->data[--stackTop];
+			    low--;
+		    }
+		    returnedValue->data[previousContextInBlock] =
+			    context->data[previousContextInContext];
+		    context = returnedValue;
+		    arguments = instanceVariables =
+			    literals = 0;
+		    stack = context->data[stackInContext];
+		    stackTop = 0;
+		    method = context->data[methodInBlock];
+		    bp = bytePtr(method->data[byteCodesInMethod]);
+		    bytePointer = integerValue(
+			    context->data[bytePointerInBlock]);
+		    --rootTop;
+		    goto endPrimitive;
 
-		case 9:		/* read char from input */
-			low = getchar();
-			if (low == EOF) {
-				returnedValue = nilObject;
-			} else {
-				returnedValue = newInteger(low);
-			}
-			break;
+	    case 9:		/* read char from input */
+		    low = getchar();
+		    if (low == EOF) {
+			    returnedValue = nilObject;
+		    } else {
+			    returnedValue = newInteger(low);
+		    }
+		    break;
 
-		case 10: 	/* small integer addition */
-			GET_HIGH_LOW();
-			x = high + low;
-			if (((high > 0) && (low > 0) && (x < high)) ||
-			 ((high < 0) && (low < 0) && (x > high))) {
-				/* overflow... do it with 64 bits */
-				returnedValue = newLInteger(
-					(long long)high + (long long)low);
-			} else {
-				if (!FITS_SMALLINT(x)) {
-					returnedValue = newLInteger(x);
-				} else {
-					returnedValue = newInteger(x);
-				}
-			}
-			break;
-			
-		case 11: 	/* small integer division */
-			GET_HIGH_LOW();
-			if (low == 0) {
-				goto failPrimitive;
-			}
-			high /= low;
-			returnedValue = newInteger(high);
-			break;
-			
-		case 12:	/* small integer remainder */ 
-			GET_HIGH_LOW();
-			if (low == 0) {
-				goto failPrimitive;
-			}
-			high %= low;
-			returnedValue = newInteger(high);
-			break;
-			
-		case 13:	/* small integer less than */ 
-			GET_HIGH_LOW();
-			if (high < low) {
-				returnedValue = trueObject;
-			} else {
-				returnedValue = falseObject;
-			}
-			break;
+	    case 10: 	/* small integer addition */
+		    GET_HIGH_LOW();
+		    x = high + low;
+		    if (((high > 0) && (low > 0) && (x < high)) ||
+		     ((high < 0) && (low < 0) && (x > high))) {
+			    /* overflow... do it with 64 bits */
+			    returnedValue = newLInteger(
+				    (long long)high + (long long)low);
+		    } else {
+			    if (!FITS_SMALLINT(x)) {
+				    returnedValue = newLInteger(x);
+			    } else {
+				    returnedValue = newInteger(x);
+			    }
+		    }
+		    break;
+		    
+	    case 11: 	/* small integer division */
+		    GET_HIGH_LOW();
+		    if (low == 0) {
+			    goto failPrimitive;
+		    }
+		    high /= low;
+		    returnedValue = newInteger(high);
+		    break;
+		    
+	    case 12:	/* small integer remainder */ 
+		    GET_HIGH_LOW();
+		    if (low == 0) {
+			    goto failPrimitive;
+		    }
+		    high %= low;
+		    returnedValue = newInteger(high);
+		    break;
+		    
+	    case 13:	/* small integer less than */ 
+		    GET_HIGH_LOW();
+		    if (high < low) {
+			    returnedValue = trueObject;
+		    } else {
+			    returnedValue = falseObject;
+		    }
+		    break;
 
-		case 14:	/* small integer equality */ 
-			GET_HIGH_LOW();
-			if (high == low) {
-				returnedValue = trueObject;
-			} else {
-				returnedValue = falseObject;
-			}
-			break;
+	    case 14:	/* small integer equality */ 
+		    GET_HIGH_LOW();
+		    if (high == low) {
+			    returnedValue = trueObject;
+		    } else {
+			    returnedValue = falseObject;
+		    }
+		    break;
 
-		case 15:	/* small integer multiplication */ 
-			GET_HIGH_LOW();
-			x = high*low;
-			if ((low == 0) || (x/low == high)) {
-				if (!FITS_SMALLINT(x)) {
-					returnedValue = newLInteger(x);
-				} else {
-					returnedValue = newInteger(x);
-				}
-			} else {
-				/* overflow... do it with 64 bits */
-				returnedValue = newLInteger(
-					(long long)high * (long long)low);
-			}
-			break;
+	    case 15:	/* small integer multiplication */ 
+		    GET_HIGH_LOW();
+		    x = high*low;
+		    if ((low == 0) || (x/low == high)) {
+			    if (!FITS_SMALLINT(x)) {
+				    returnedValue = newLInteger(x);
+			    } else {
+				    returnedValue = newInteger(x);
+			    }
+		    } else {
+			    /* overflow... do it with 64 bits */
+			    returnedValue = newLInteger(
+				    (long long)high * (long long)low);
+		    }
+		    break;
 
-		case 16:	/* small integer subtraction */ 
-			GET_HIGH_LOW();
-			x = high - low;
-			if ((low > 0) && (high < 0) && (x > high)) {
-				returnedValue = newLInteger(
-					(long long)high - (long long)low);
-			} else {
-				if (!FITS_SMALLINT(x)) {
-					returnedValue = newLInteger(x);
-				} else {
-					returnedValue = newInteger(x);
-				}
-			}
-			break;
+	    case 16:	/* small integer subtraction */ 
+		    GET_HIGH_LOW();
+		    x = high - low;
+		    if ((low > 0) && (high < 0) && (x > high)) {
+			    returnedValue = newLInteger(
+				    (long long)high - (long long)low);
+		    } else {
+			    if (!FITS_SMALLINT(x)) {
+				    returnedValue = newLInteger(x);
+			    } else {
+				    returnedValue = newInteger(x);
+			    }
+		    }
+		    break;
 
-		case 18: 	/* turn on debugging */
-			debugging = 1;
-			returnedValue = nilObject;
-			break;
+	    case 18: 	/* turn on debugging */
+		    debugging = 1;
+		    returnedValue = nilObject;
+		    break;
 
-		case 19:	/* error trap -- halt execution */
-			--rootTop; /* pop context */
-			aProcess = rootStack[--rootTop];
-			aProcess->data[contextInProcess] = context;
-			return 2;
+	    case 19:	/* error trap -- halt execution */
+		    --rootTop; /* pop context */
+		    aProcess = rootStack[--rootTop];
+		    aProcess->data[contextInProcess] = context;
+		    return 2;
 
-		case 20:	/* byteArray allocation */
-			low = integerValue(stack->data[--stackTop]);
-			rootStack[rootTop++] = stack->data[--stackTop];
-			returnedValue = gcialloc(low);
-			returnedValue->class = rootStack[--rootTop];
-			bzero(bytePtr(returnedValue), low);
-			break;
+	    case 20:	/* byteArray allocation */
+		    low = integerValue(stack->data[--stackTop]);
+		    rootStack[rootTop++] = stack->data[--stackTop];
+		    returnedValue = gcialloc(low);
+		    returnedValue->class = rootStack[--rootTop];
+		    bzero(bytePtr(returnedValue), low);
+		    break;
 
-		case 21:	/* string at */
-			low = integerValue(stack->data[--stackTop])-1;
-			returnedValue = stack->data[--stackTop];
-			if ((low < 0) ||
-			 (low >= (returnedValue->size >> 2))) {
-				goto failPrimitive;
-			}
-			low = bytePtr(returnedValue)[low];
-			returnedValue = newInteger(low);
-			break;
+	    case 21:	/* string at */
+		    low = integerValue(stack->data[--stackTop])-1;
+		    returnedValue = stack->data[--stackTop];
+		    if ((low < 0) ||
+		     (low >= (returnedValue->size >> 2))) {
+			    goto failPrimitive;
+		    }
+		    low = bytePtr(returnedValue)[low];
+		    returnedValue = newInteger(low);
+		    break;
 
-		case 22:	/* string at put */
-			low = integerValue(stack->data[--stackTop])-1;
-			returnedValue = stack->data[--stackTop];
-			if ((low < 0) ||
-			 (low >= (returnedValue->size >> 2))) {
-				stackTop -= 1;
-				goto failPrimitive;
-			}
-			bytePtr(returnedValue)[low] =
-				integerValue(stack->data[--stackTop]);
-			break;
+	    case 22:	/* string at put */
+		    low = integerValue(stack->data[--stackTop])-1;
+		    returnedValue = stack->data[--stackTop];
+		    if ((low < 0) ||
+		     (low >= (returnedValue->size >> 2))) {
+			    stackTop -= 1;
+			    goto failPrimitive;
+		    }
+		    bytePtr(returnedValue)[low] =
+			    integerValue(stack->data[--stackTop]);
+		    break;
 
-		case 23:	/* string clone */
-			rootStack[rootTop++] = stack->data[--stackTop];
-			rootStack[rootTop++] = returnedValue 
-				= stack->data[--stackTop];
-			low = returnedValue->size >> 2;
-			returnedValue = gcialloc(low);
-			messageSelector = rootStack[--rootTop];
-			while (low-- > 0)
-				bytePtr(returnedValue)[low] =
-					bytePtr(messageSelector)[low];
-			returnedValue->class = rootStack[--rootTop];
-			break;
+	    case 23:	/* string clone */
+		    rootStack[rootTop++] = stack->data[--stackTop];
+		    rootStack[rootTop++] = returnedValue 
+			    = stack->data[--stackTop];
+		    low = returnedValue->size >> 2;
+		    returnedValue = gcialloc(low);
+		    messageSelector = rootStack[--rootTop];
+		    while (low-- > 0)
+			    bytePtr(returnedValue)[low] =
+				    bytePtr(messageSelector)[low];
+		    returnedValue->class = rootStack[--rootTop];
+		    break;
 
-		case 24:	/* array at */
-			low = integerValue(stack->data[--stackTop])-1;
-			returnedValue = stack->data[--stackTop];
-			if ((low < 0) ||
-			 (low >= (returnedValue->size >> 2))) {
-				goto failPrimitive;
-			}
-			returnedValue = returnedValue->data[low];
-			break;
+	    case 24:	/* array at */
+		    low = integerValue(stack->data[--stackTop])-1;
+		    returnedValue = stack->data[--stackTop];
+		    if ((low < 0) ||
+		     (low >= (returnedValue->size >> 2))) {
+			    goto failPrimitive;
+		    }
+		    returnedValue = returnedValue->data[low];
+		    break;
 #undef GET_HIGH_LOW
 
-		case 25:	/* Integer division */
-		case 26:	/* Integer remainder */
-		case 27:	/* Integer addition */
-		case 28:	/* Integer multiplication */
-		case 29:	/* Integer subtraction */
-		case 30:	/* Integer less than */
-		case 31:	/* Integer equality */
-			op = stack->data[--stackTop];
-			if (CLASS(op) != IntegerClass) {
-				stackTop -= 1;
-				goto failPrimitive;
-			}
-			returnedValue = stack->data[--stackTop];
-			if (CLASS(returnedValue) != IntegerClass) {
-				goto failPrimitive;
-			}
-			returnedValue = do_Integer(high,
-				returnedValue, op);
-			if (returnedValue == NULL) {
-				goto failPrimitive;
-			}
-			break;
+	    case 25:	/* Integer division */
+	    case 26:	/* Integer remainder */
+	    case 27:	/* Integer addition */
+	    case 28:	/* Integer multiplication */
+	    case 29:	/* Integer subtraction */
+	    case 30:	/* Integer less than */
+	    case 31:	/* Integer equality */
+		    op = stack->data[--stackTop];
+		    if (CLASS(op) != IntegerClass) {
+			    stackTop -= 1;
+			    goto failPrimitive;
+		    }
+		    returnedValue = stack->data[--stackTop];
+		    if (CLASS(returnedValue) != IntegerClass) {
+			    goto failPrimitive;
+		    }
+		    returnedValue = do_Integer(high,
+			    returnedValue, op);
+		    if (returnedValue == NULL) {
+			    goto failPrimitive;
+		    }
+		    break;
 
-		case 32:	/* Integer allocation */
-			op = stack->data[--stackTop];
-			if (!IS_SMALLINT(op)) {
-				goto failPrimitive;
-			}
-			returnedValue = newLInteger(integerValue(op));
-			break;
+	    case 32:	/* Integer allocation */
+		    op = stack->data[--stackTop];
+		    if (!IS_SMALLINT(op)) {
+			    goto failPrimitive;
+		    }
+		    returnedValue = newLInteger(integerValue(op));
+		    break;
 
-		case 33:	/* Low order of Integer -> SmallInt */
-			op = stack->data[--stackTop];
-			l = *(long long *)bytePtr(op);
-			x = l;
-			if (!FITS_SMALLINT(x)) {
-				goto failPrimitive;
-			}
-			returnedValue = newInteger(x);
-			break;
+	    case 33:	/* Low order of Integer -> SmallInt */
+		    op = stack->data[--stackTop];
+		    l = *(long long *)bytePtr(op);
+		    x = l;
+		    if (!FITS_SMALLINT(x)) {
+			    goto failPrimitive;
+		    }
+		    returnedValue = newInteger(x);
+		    break;
 
-		default:
-				/* pop arguments, try primitive */
-			rootStack[rootTop++] = stack;
-			arguments = gcalloc(low);
-			arguments->class = NULL;
-			stack = rootStack[--rootTop];
-			while (low > 0) {
-				arguments->data[--low] = 
-					stack->data[--stackTop];
-			}
-			returnedValue = primitive(high, arguments);
-			arguments = 0;
-			break;
-		}
+	    default:
+			    /* pop arguments, try primitive */
+		    rootStack[rootTop++] = stack;
+		    arguments = gcalloc(low);
+		    arguments->class = NULL;
+		    stack = rootStack[--rootTop];
+		    while (low > 0) {
+			    arguments->data[--low] = 
+				    stack->data[--stackTop];
+		    }
+		    returnedValue = primitive(high, arguments);
+		    arguments = 0;
+		    break;
+	    }
 
-		/*
-		 * Restore our context pointer and
-		 * force a stack return due to successful
-		 * primitive.
-		 */
-		context = rootStack[--rootTop];
-		goto doReturn;
+	    /*
+	     * Restore our context pointer and
+	     * force a stack return due to successful
+	     * primitive.
+	     */
+	    context = rootStack[--rootTop];
+	    goto doReturn;
 
 failPrimitive:
-		/*
-		 * Since we're continuing execution from a failed
-		 * primitive, re-fetch context if a GC had occurred
-		 * during the failed execution.  Supply a return value
-		 * for the failed primitive.
-		 */
-		returnedValue = nilObject;
- 		if (context != rootStack[--rootTop]) {
- 			context = rootStack[rootTop];
- 			method = context->data[methodInContext];
- 			stack = context->data[stackInContext];
- 			bp = bytePtr(method->data[byteCodesInMethod]);
- 			arguments = temporaries = literals = 
- 				instanceVariables = 0;
-		}
- 		stack->data[stackTop++] = nilObject;
+	    /*
+	     * Since we're continuing execution from a failed
+	     * primitive, re-fetch context if a GC had occurred
+	     * during the failed execution.  Supply a return value
+	     * for the failed primitive.
+	     */
+	    returnedValue = nilObject;
+	    if (context != rootStack[--rootTop]) {
+		    context = rootStack[rootTop];
+		    method = context->data[methodInContext];
+		    stack = context->data[stackInContext];
+		    bp = bytePtr(method->data[byteCodesInMethod]);
+		    arguments = temporaries = literals = 
+			    instanceVariables = 0;
+	    }
+	    stack->data[stackTop++] = nilObject;
 
 endPrimitive:
-		/*
-		 * Done with primitive, continue execution loop
-		 */
-		break;
+	    /*
+	     * Done with primitive, continue execution loop
+	     */
+	    break;
 
-            case DoSpecial:
-		DBG1("DoSpecial", low);
-                switch(low) {
-                    case SelfReturn:
-			if (! arguments) 
-				arguments = context->data[argumentsInContext];
-			returnedValue = arguments->data[receiverInArguments];
-			goto doReturn;
+	case DoSpecial:
+	    DBG1("DoSpecial", low);
+	    switch(low) {
+		case SelfReturn:
+		    if (! arguments) 
+			    arguments = context->data[argumentsInContext];
+		    returnedValue = arguments->data[receiverInArguments];
+		    goto doReturn;
 
-                    case StackReturn:
-			returnedValue = stack->data[--stackTop];
+		case StackReturn:
+		    returnedValue = stack->data[--stackTop];
 
 doReturn:
-			context = context->data[previousContextInContext];
+		    context = context->data[previousContextInContext];
 doReturn2:
-			if ((context == 0) || (context == nilObject)) {
-				aProcess = rootStack[--rootTop];
-				aProcess->data[contextInProcess] = context;
-				aProcess->data[resultInProcess] = returnedValue;
-				return 4;
-				}
-			arguments = instanceVariables = literals 
-				= temporaries = 0;
-			stack = context->data[stackInContext];
-			stackTop = 
-				integerValue(context->data[stackTopInContext]);
-			stack->data[stackTop++] = returnedValue;
-			method = context->data[methodInContext];
-    			bp = bytePtr(method->data[byteCodesInMethod]);
-    			bytePointer = 
-				integerValue(context->data[bytePointerInContext]);
-			break;
+		    if ((context == 0) || (context == nilObject)) {
+			    aProcess = rootStack[--rootTop];
+			    aProcess->data[contextInProcess] = context;
+			    aProcess->data[resultInProcess] = returnedValue;
+			    return 4;
+			    }
+		    arguments = instanceVariables = literals 
+			    = temporaries = 0;
+		    stack = context->data[stackInContext];
+		    stackTop = 
+			    integerValue(context->data[stackTopInContext]);
+		    stack->data[stackTop++] = returnedValue;
+		    method = context->data[methodInContext];
+		    bp = bytePtr(method->data[byteCodesInMethod]);
+		    bytePointer = 
+			    integerValue(context->data[bytePointerInContext]);
+		    break;
 
-		    case BlockReturn:
-			returnedValue = stack->data[--stackTop];
-			context = context->data[creatingContextInBlock]
-				->data[previousContextInContext];
-			goto doReturn2;
+		case BlockReturn:
+		    returnedValue = stack->data[--stackTop];
+		    context = context->data[creatingContextInBlock]
+			    ->data[previousContextInContext];
+		    goto doReturn2;
 
-                    case Duplicate:
-			returnedValue = stack->data[stackTop-1];
-			stack->data[stackTop++] = returnedValue;
-			break;
+		case Duplicate:
+		    returnedValue = stack->data[stackTop-1];
+		    stack->data[stackTop++] = returnedValue;
+		    break;
 
-                    case PopTop:
-			stackTop--;
-			break;
+		case PopTop:
+		    stackTop--;
+		    break;
 
-                    case Branch:
-			bytePointer = bp[bytePointer];
-			break;
+		case Branch:
+		    bytePointer = bp[bytePointer];
+		    break;
 
-                    case BranchIfTrue:
-			low = bp[bytePointer++];
-			returnedValue = stack->data[--stackTop];
-			if (returnedValue == trueObject)
-				bytePointer = low;
-			break;
+		case BranchIfTrue:
+		    low = bp[bytePointer++];
+		    returnedValue = stack->data[--stackTop];
+		    if (returnedValue == trueObject)
+			    bytePointer = low;
+		    break;
 
-                    case BranchIfFalse:
-			low = bp[bytePointer++];
-			returnedValue = stack->data[--stackTop];
-			if (returnedValue == falseObject)
-				bytePointer = low;
-			break;
+		case BranchIfFalse:
+		    low = bp[bytePointer++];
+		    returnedValue = stack->data[--stackTop];
+		    if (returnedValue == falseObject)
+			    bytePointer = low;
+		    break;
 
-                    case SendToSuper:
-			/* next byte has literal selector number */
-			low = bp[bytePointer++];
-			if (! literals) {
-				literals = method->data[literalsInMethod];
-				}
-			messageSelector = literals->data[low];
-			receiverClass = 
-				method->data[classInMethod]
-					->data[parentClassInClass];
-			arguments = stack->data[--stackTop];
-			goto checkCache;
+		case SendToSuper:
+		    /* next byte has literal selector number */
+		    low = bp[bytePointer++];
+		    if (! literals) {
+			    literals = method->data[literalsInMethod];
+			    }
+		    messageSelector = literals->data[low];
+		    receiverClass = 
+			    method->data[classInMethod]
+				    ->data[parentClassInClass];
+		    arguments = stack->data[--stackTop];
+		    goto checkCache;
 
-                    default:
-                        sysError("invalid doSpecial", low);
-                        break;
-                }
-                break;
+		default:
+		    sysError("invalid doSpecial", low);
+		    break;
+	    }
+	    break;
 
-            default:
-                sysError("invalid bytecode", high);
-                break;
+	default:
+	    sysError("invalid bytecode", high);
+	    break;
         }
     }
 }

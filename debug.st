@@ -1,5 +1,5 @@
 +Encoder subclass: #DebugEncoder variables: #(lines oldLine oldRange)
-+Method subclass: #DebugMethod variables: #(lines textlines vars)
++Method subclass: #DebugMethod variables: #(lines textlines vars bpoints)
 +Object subclass: #Debug variables: #(proc)
 !DebugEncoder
 name: n
@@ -200,35 +200,16 @@ stepCall: sel | ctx stack sp args target meth |
 	^ false
 !
 !Debug
-setBreak: pc | code ret |
-	" Patch in a DoSpecial operation 12 (breakpoint) "
-	" Return a record of how to undo this. "
-	code <- proc context method byteCodes.
-	ret <- Array new: 3.
-	ret at: 1 put: code.
-	ret at: 2 put: pc.
-	ret at: 3 put: (code at: (pc + 1)).
-	code at: (pc + 1) put: ((15*16) + 12).
-	^ ret
-!
-!Debug
-clearBreak: undo | code pc old |
-	" Restore the previous code value "
-	code <- undo at: 1.
-	pc <- undo at: 2.
-	old <- undo at: 3.
-	code at: (pc + 1) put: old
-!
-!Debug
-overCall: pc | ctx old res |
+overCall: pc | ctx old res meth |
 	" Set a breakpoint at the instruction beyond the SendMessage "
 	ctx <- proc context.
-	old <- self setBreak: pc.
+	meth <- ctx method.
+	meth setBreak: pc.
 
 	" Now let it run until it hits the breakpoint, and clear
 	  the breakpoint. "
 	res <- self runIt: -1.
-	self clearBreak: old.
+	meth clearBreak: pc.
 	res ifTrue: [
 		" We shouldn't time out... "
 		'Unexpected run completion' printNl.
@@ -405,7 +386,8 @@ asLines | c ret slot idx base top nl |
 !DebugMethod
 debug: l
 	lines <- l.
-	textlines <- text asLines
+	textlines <- text asLines.
+	bpoints <- Dictionary new
 !
 !DebugMethod
 debug
@@ -452,4 +434,39 @@ print: var in: ctx | idx obj |
 
 	" Couldn't find it... "
 	'Unknown variable' printNl
+!
+!DebugMethod
+setBreak: bp | old |
+	" If already set, ignore "
+	(bpoints includes: bp) ifTrue: [ ^ self ].
+
+	" Record current opcode at code location "
+	old <- byteCodes at: (bp + 1).
+
+	" Patch in a DoSpecial operation 12 (breakpoint) "
+	byteCodes at: (bp + 1) put: ((15*16) + 12).
+
+	" Record this breakpoint "
+	bpoints at: bp put: old
+!
+!DebugMethod
+clearBreak: bp
+	" If not set, ignore "
+	(bpoints includes: bp) ifFalse: [ ^ self ].
+
+	" Restore code contents "
+	byteCodes at: (bp + 1) put: (bpoints at: bp).
+
+	" Remove record of this breakpoint "
+	bpoints removeKey: bp
+!
+!DebugMethod
+clearAll
+	self breakpoints do: [:k|
+		self clearBreak: k
+	]
+!
+!DebugMethod
+breakpoints
+	^ bpoints keysAsArray
 !

@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-Wall -g -I..
 
 image: imageBuilder imageSource
-	imageBuilder <imageSource
+	./imageBuilder <imageSource
 
 imageBuilder: imageBuilder.o
 	rm -f imageBuilder

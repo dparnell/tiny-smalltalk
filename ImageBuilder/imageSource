@@ -40,6 +40,8 @@ CLASS Set	    Collection		members growth
 CLASS Number        Magnitude
 CLASS Integer       Number
 CLASS SmallInt      Number
+RAWCLASS MetaSmallInt Class           MetaNumber           seed
+RAWCLASS SmallInt   MetaSmallInt Number
 CLASS Link          Object            value next
 CLASS Node          Object            value left right
 CLASS Interval      Collection        low high step
@@ -1622,9 +1624,30 @@ METHOD Number
 bitShift: arg
 	^ (self asSmallInt bitShift: arg)
 !
+METHOD Number
+atRandom
+	" Return random number from 1 to self "
+	(self < 2) ifTrue: [ ^ self ].
+	^ ((1 to: self) atRandom)
+!
 COMMENT ---------- SmallInt ------------
+METHOD MetaSmallInt
+atRandom
+	" Set up seed one time.  TBD: init from something external;
+	  getpid() or time() "
+	seed isNil ifTrue: [ seed <- 17 ].
+
+	" Rotate the random number generator. "
+	seed <- ((seed * 1103515245 + 12345) truncSmallInt)
+		bitAnd: 268435455.
+	^ seed
+!
 METHOD SmallInt
 asSmallInt
+	^self
+!
+METHOD SmallInt
+truncSmallInt
 	^self
 !
 METHOD SmallInt
@@ -1711,6 +1734,11 @@ METHOD Integer
 asSmallInt
 	<33 self>.
 	self overflow
+!
+METHOD Integer
+truncSmallInt
+	<40 self>.
+	self primitiveFailed
 !
 METHOD Integer
 hash
@@ -1882,6 +1910,12 @@ printString | s |
 		low printString + '..' + high printString.
 	(step ~= 1) ifTrue: [ s <- s + ' by ' + step printString ].
 	^ s + '>'
+!
+METHOD Interval
+atRandom | ret |
+	" Return a random element from our sequence "
+	ret <- (SmallInt atRandom) rem: ((high - low + 1) quo: step).
+	^ low + (ret * step)
 !
 COMMENT ---------- Links ------------
 METHOD MetaLink

@@ -32,20 +32,24 @@ static struct object *nilObject, *trueObject, *falseObject,
 
 static struct object * SymbolClass;
 
+#ifdef gcalloc
 # undef gcalloc
+#endif
 
 static struct object *
 gcalloc(int size)
 {
 	struct object * result;
 
-	result = (struct object *)
+	result = 
 		malloc(sizeof(struct object) + size * sizeof(struct object *));
-	if (result == 0)
+	if (result == 0) {
 		sysError("out of memory", "gcalloc");
+	}
 	SETSIZE(result, size);
-	while (size > 0)
+	while (size > 0) {
 		result->data[--size] = nilObject;
+	}
 	return result;
 }
 
@@ -94,10 +98,10 @@ addGlobalName(char * name, struct object * value)
 {
 	char * newName;
 
-	newName = (char *) malloc(1 + strlen(name));
-	if (! newName)
+	newName = strdup(name);
+	if (!newName) {
 		sysError("out of memory", "newname in add global");
-	strcpy(newName, name);
+	}
 	globalNames[globalTop] = newName;
 	globals[globalTop] = value;
 	globalTop++;
@@ -430,13 +434,14 @@ static char * argumentNames[ArgumentBufferTop];
 static int argumentTop;
 
 static void
-addArgument(char * name)
+addArgument(char *name)
 {
 	char *p;
 
-	if (!(p = (char *) malloc(1 + strlen(name))))
+	p = strdup(name);
+	if (!p) {
 		sysError("malloc failure", "addArguments");
-	strcpy(p, name);
+	}
 	argumentNames[argumentTop++] = p;
 }
 
@@ -445,13 +450,18 @@ static char *tempBuffer[TempBufferTop];
 static int tempTop, maxTemp;
 
 static void
-addTemporary(char * name)
+addTemporary(char *name)
 {
-	char * p;
-	p = (char *) malloc(1 + strlen(name));
-	strcpy(p, name);
+	char *p;
+
+	p = strdup(name);
+	if (!p) {
+		sysError("malloc failure", "addTemporary");
+	}
 	tempBuffer[tempTop++] = p;
-	if (tempTop > maxTemp) maxTemp = tempTop;
+	if (tempTop > maxTemp) {
+		maxTemp = tempTop;
+	}
 }
 
 static struct object * currentClass;

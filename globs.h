@@ -1,0 +1,12 @@
+/*
+ * globs.h
+ *	Global defs for VM modules
+ */
+#ifndef GLOBS_H
+#define GLOBS_H
+#include <stdio.h>
+
+extern int fileIn(FILE * fp), fileOut(FILE * fp);
+extern void sysError(char *, int), flushCache(void);
+
+#endif /* GLOBS_H */

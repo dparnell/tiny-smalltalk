@@ -947,22 +947,24 @@ new: sz
 	<7 self sz>
 !
 METHOD MetaArray
-with: elemA
-	^ self in: (self new: 1) at: 1 put: elemA
+with: elemA | ret |
+	ret <- self new: 1.
+	ret at: 1 put: elemA.
+	^ ret
 !
 METHOD MetaArray
 with: elemA with: elemB | ret |
 	ret <- self new: 2.
-	self in: ret at: 1 put: elemA.
-	self in: ret at: 2 put: elemB.
+	ret at: 1 put: elemA.
+	ret at: 2 put: elemB.
 	^ ret
 !
 METHOD MetaArray
 with: elemA with: elemB with: elemC | ret |
 	ret <- self new: 3.
-	self in: ret at: 1 put: elemA.
-	self in: ret at: 2 put: elemB.
-	self in: ret at: 3 put: elemC.
+	ret at: 1 put: elemA.
+	ret at: 2 put: elemB.
+	ret at: 3 put: elemC.
 	^ ret
 !
 METHOD Array

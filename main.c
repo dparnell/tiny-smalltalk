@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <unistd.h>
 #if defined(VSTA) && defined(PROFILE)
 # include <mcount.h>
 #endif
@@ -45,7 +46,8 @@ sysError(char * a, unsigned int b)
 	exit(1);
 }
 
-void backTrace(struct object * aContext)
+static void
+backTrace(struct object * aContext)
 {
 	printf("back trace\n");
 	while (aContext && (aContext != nilObject)) {
@@ -186,21 +188,22 @@ main(int argc, char ** argv)
 	(note that many primitives are handled in the interpreter)
 */
 
-# define FILEMAX 10
-FILE * filePointers[FILEMAX];
-int fileTop = 0;
+#define FILEMAX 20
+static FILE *filePointers[FILEMAX];
 
-void
+static void
 getUnixString(char * to, int size, struct object * from)
 {
 	int i;
 	int fsize = SIZE(from);
 	struct byteObject * bobj = (struct byteObject *) from;
 
-	if (fsize > size) sysError("error converting text into unix string",
-		fsize);
-	for (i = 0; i < fsize; i++)
+	if (fsize > size) {
+		sysError("error converting text into unix string", fsize);
+	}
+	for (i = 0; i < fsize; i++) {
 		to[i] = bobj->bytes[i];
+	}
 	to[i] = '\0';	/* put null terminator at end */
 }
 
@@ -209,9 +212,9 @@ primitive(int primitiveNumber, struct object *args, int *failed)
 {
 	struct object *returnedValue = nilObject;
 	int i, j;
-	FILE * fp;
-	char * p;
-	struct byteObject * stringReturn;
+	FILE *fp;
+	char *p;
+	struct byteObject *stringReturn;
 	char nameBuffer[80], modeBuffer[80];
 
 	*failed = 0;
@@ -221,13 +224,18 @@ primitive(int primitiveNumber, struct object *args, int *failed)
 		getUnixString(modeBuffer, 10, args->data[1]);
 		fp = fopen(nameBuffer, modeBuffer);
 		if (fp != NULL) {
-			if (fileTop + 1 >= FILEMAX) {
+			for (i = 0; i < FILEMAX; ++i) {
+				if (filePointers[i] == NULL) {
+					break;
+				}
+			}
+			if (i >= FILEMAX) {
 				sysError("too many open files", 0);
 				fclose(fp);
 				*failed = 1;
 			} else {
-				returnedValue = newInteger(fileTop);
-				filePointers[fileTop++] = fp;
+				returnedValue = newInteger(i);
+				filePointers[i] = fp;
 			}
 		} else {
 			*failed = 1;
@@ -235,54 +243,42 @@ primitive(int primitiveNumber, struct object *args, int *failed)
 		break;
 
 	case 101:	/* read a single character from a file */
-		if (!IS_SMALLINT(args->data[0])) {
-			*failed = 1;
-			break;
-		}
 		i = integerValue(args->data[0]);
-		if ((i < 0) || (i >= FILEMAX)) {
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
 			*failed = 1;
 			break;
 		}
-		i = fgetc(filePointers[i]);
+		i = fgetc(fp);
 		if (i != EOF) {
 			returnedValue = newInteger(i);
 		}
 		break;
 
 	case 102:	/* write a single character to a file */
-		if (!IS_SMALLINT(args->data[0])
-				|| !IS_SMALLINT(args->data[1])) {
-			*failed = 1;
-			break;
-		}
 		i = integerValue(args->data[0]);
-		if ((i < 0) || (i >= FILEMAX)) {
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
 			*failed = 1;
 			break;
 		}
-		fputc(integerValue(args->data[1]), filePointers[i]);
+		fputc(integerValue(args->data[1]), fp);
 		break;
 
 	case 103:	/* close file */
-		if (!IS_SMALLINT(args->data[0])) {
-			*failed = 1;
-			break;
-		}
 		i = integerValue(args->data[0]);
-		if ((i < 0) || (i >= FILEMAX)) {
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
 			*failed = 1;
 			break;
 		}
-		fclose(filePointers[i]);
-		if (i+1 == fileTop) {
-			fileTop--;
-		}
+		fclose(fp);
 		break;
 
 	case 104:	/* file out image */
 		i = integerValue(args->data[0]);
-		fileOut(filePointers[i]);
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
+			*failed = 1;
+			break;
+		}
+		fileOut(fp);
 		break;
 
 	case 105:	/* edit a string */
@@ -320,6 +316,87 @@ primitive(int primitiveNumber, struct object *args, int *failed)
 			/* now clean up files */
 		fclose(fp);
 		unlink(nameBuffer);
+		break;
+
+	case 106:	/* Read into ByteArray */
+		/* File descriptor */
+		i = integerValue(args->data[0]);
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
+			*failed = 1;
+			break;
+		}
+
+		/* Make sure we're populating an array of bytes */
+		returnedValue = args->data[1];
+		if ((returnedValue->size & FLAG_BIN) == 0) {
+			*failed = 1;
+			break;
+		}
+
+		/* Sanity check on I/O count */
+		i = integerValue(args->data[2]);
+		if ((i < 0) || (i > SIZE(returnedValue))) {
+			*failed = 1;
+			break;
+		}
+
+		/* Do the I/O */
+		i = fread(bytePtr(returnedValue), sizeof(char), i, fp);
+		if (i < 0) {
+			*failed = 1;
+			break;
+		}
+		returnedValue = newInteger(i);
+		break;
+
+	case 107:	/* Write from ByteArray */
+		/* File descriptor */
+		i = integerValue(args->data[0]);
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
+			*failed = 1;
+			break;
+		}
+
+		/* Make sure we're writing an array of bytes */
+		returnedValue = args->data[1];
+		if ((returnedValue->size & FLAG_BIN) == 0) {
+			*failed = 1;
+			break;
+		}
+
+		/* Sanity check on I/O count */
+		i = integerValue(args->data[2]);
+		if ((i < 0) || (i > SIZE(returnedValue))) {
+			*failed = 1;
+			break;
+		}
+
+		/* Do the I/O */
+		i = fwrite(bytePtr(returnedValue), sizeof(char), i, fp);
+		if (i < 0) {
+			*failed = 1;
+			break;
+		}
+		returnedValue = newInteger(i);
+		break;
+
+	case 108:	/* Seek to file position */
+		/* File descriptor */
+		i = integerValue(args->data[0]);
+		if ((i < 0) || (i >= FILEMAX) || !(fp = filePointers[i])) {
+			*failed = 1;
+			break;
+		}
+
+		/* File position */
+		i = integerValue(args->data[1]);
+		if ((i < 0) || ((i = fseek(fp, i, SEEK_SET)) < 0)) {
+			*failed = 1;
+			break;
+		}
+
+		/* Return position as our value */
+		returnedValue = newInteger(i);
 		break;
 
 	default:

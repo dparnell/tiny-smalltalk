@@ -1117,6 +1117,13 @@ at: index put: aValue
 	(self includesKey: index) ifFalse: [ self badIndex ].
 	self primitiveFailed
 !
+METHOD ByteArray
+asString | str sz |
+	sz <- self size.
+	str <- String new: sz.
+	1 to: sz do: [:i| str at: i put: ((self at: i) asChar)].
+	^ str
+!
 COMMENT ---------- Strings ------------
 METHOD MetaString
 new: size
@@ -1656,6 +1663,10 @@ atRandom
 	" Return random number from 1 to self "
 	(self < 2) ifTrue: [ ^ self ].
 	^ ((1 to: self) atRandom)
+!
+METHOD Number
+asChar
+	^ Char new: (self asSmallInt)
 !
 COMMENT ---------- SmallInt ------------
 METHOD MetaSmallInt
@@ -2255,6 +2266,34 @@ methodCommand: classCmd | name aClass text line |
 	classCmd
 		ifTrue: [ (aClass addMethod: text) printNl ]
 		ifFalse: [ (aClass class addMethod: text) printNl ]
+!
+METHOD File
+at: idx
+	<108 fileID idx>.
+	self primitiveFailed
+!
+METHOD File
+write: buf size: count
+	<107 fileID buf count>.
+	self primitiveFailed
+!
+METHOD File
+at: idx put: buf
+	self at: idx.
+	self write: buf size: buf size
+!
+METHOD File
+at: idx get: buf | size |
+	self at: idx.
+	size <- buf size.
+	<106 fileID buf size>
+!
+METHOD File
+at: idx size: count | buf res |
+	buf <- ByteArray new: count.
+	res <- self at: idx get: buf.
+	(res < count) ifTrue: [ buf <- buf from: 1 to: res ].
+	^ buf
 !
 COMMENT --------------parser methods-----------------
 METHOD Parser

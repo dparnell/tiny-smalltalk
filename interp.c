@@ -191,16 +191,9 @@ newLInteger(long long val)
 {
 	struct object *res;
 
-	/*
-	 * Channel our new objects through rootStack, as any of
-	 * these steps could trigger a GC.
-	 */
-	rootStack[rootTop++] = newInteger((int)(val >> 32));
-	rootStack[rootTop++] = newInteger((int)(val & 0xFFFFFFFF));
-	res = gcalloc(2);
+	res = gcialloc(sizeof(long long));
 	res->class = IntegerClass;
-	res->data[0] = rootStack[--rootTop];
-	res->data[1] = rootStack[--rootTop];
+	*(long long *)bytePtr(res) = val;
 	return(res);
 }
 
@@ -216,10 +209,8 @@ do_Integer(int op, struct object *low, struct object *high)
 {
 	long long l, h;
 
-	l = integerValue(low->data[0]) |
-		((long long)integerValue(low->data[1]) << 32);
-	h = integerValue(high->data[0]) |
-		((long long)integerValue(high->data[1]) << 32);
+	l = *(long long *)bytePtr(low);
+	h = *(long long *)bytePtr(high);
 	switch (op) {
 	case 25:	/* Integer division */
 		if (h == 0LL) {
@@ -263,6 +254,7 @@ execute(struct object *aProcess)
 	    *returnedValue = nilObject, *messageSelector,
 	    *receiverClass, *op;
     unsigned char *bp;
+    long long l;
 
     /* push process, so as to save it */
     rootStack[rootTop++] = aProcess;
@@ -273,7 +265,7 @@ execute(struct object *aProcess)
     method = context->data[methodInContext];
 
 	/* load byte pointer */
-    bp = (unsigned char *) bytePtr(method->data[byteCodesInMethod]);
+    bp = (unsigned char *)bytePtr(method->data[byteCodesInMethod]);
     bytePointer = integerValue(context->data[bytePointerInContext]);
 
 	/* load stack */
@@ -897,6 +889,24 @@ execute(struct object *aProcess)
 			if (returnedValue == NULL) {
 				goto failPrimitive;
 			}
+			break;
+
+		case 32:	/* Integer allocation */
+			op = stack->data[--stackTop];
+			if (!IS_SMALLINT(op)) {
+				goto failPrimitive;
+			}
+			returnedValue = newLInteger(integerValue(op));
+			break;
+
+		case 33:	/* Low order of Integer -> SmallInt */
+			op = stack->data[--stackTop];
+			l = *(long long *)bytePtr(op);
+			x = l;
+			if (!FITS_SMALLINT(x)) {
+				goto failPrimitive;
+			}
+			returnedValue = newInteger(x);
 			break;
 
 		default:

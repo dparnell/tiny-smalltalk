@@ -52,7 +52,7 @@ CLASS String        MetaString    Array
 CLASS MetaNumber   Class         MetaObject
 CLASS Number       MetaNumber   Magnitude
 CLASS MetaInteger   Class         MetaObject
-CLASS Integer       MetaInteger   Number            low high
+CLASS Integer       MetaInteger   Number
 CLASS MetaSmallInt  Class         MetaNumber
 CLASS SmallInt      MetaSmallInt  Number
 CLASS MetaLink      Class         MetaObject
@@ -1174,14 +1174,6 @@ asInteger
 	^Integer new: self
 !
 METHOD SmallInt
-highOrder
-	^ 0
-!
-METHOD SmallInt
-lowOrder
-	^ self
-!
-METHOD SmallInt
 quo: arg
 	<11 self arg>
 	(arg isMemberOf: SmallInt) ifFalse: [^self quo: arg asSmallInt].
@@ -1227,11 +1219,11 @@ METHOD SmallInt
 !
 COMMENT ---------- Integer ------------
 METHOD MetaInteger
-new: low | n |
-	n <- super new.
-	self in: n at: 1 put: low.
-	self in: n at: 2 put: ((low negative) ifTrue: [-1] ifFalse: [0]).
-	^n
+new: low
+	<32 low>
+	low <- low asSmallInt.
+	<32 low>
+	self primitiveFailed
 !
 METHOD Integer
 asInteger
@@ -1239,16 +1231,8 @@ asInteger
 !
 METHOD Integer
 asSmallInt
-	(high > 0) ifTrue: [ self overflow ].
-	^low
-!
-METHOD Integer
-highOrder
-	^ high
-!
-METHOD Integer
-lowOrder
-	^ low
+	<33 self>
+	self overflow
 !
 METHOD Integer
 quo: arg

@@ -1272,7 +1272,7 @@ to: limit
 !
 METHOD Number
 to: limit by: step
-	^ Interval from: self to: limit by: step
+	^ Interval from: self to: limit step: step
 !
 METHOD Number
 to: limit do: aBlock  | i |
@@ -1489,6 +1489,29 @@ do: aBlock	| current |
 			[ current <= high ] whileTrue:
 				[ aBlock value: current.
 				current <- current + step ] ]
+!
+METHOD Interval
+low: l
+	low <- l
+!
+METHOD Interval
+high: h
+	high <- h
+!
+METHOD Interval
+low
+	^ low
+!
+METHOD Interval
+high
+	^ high
+!
+METHOD Interval
+contains: val
+	" Check within range first "
+	((val < low) or: [val > high]) ifTrue: [ ^ false ].
+	" Then check if in equivalence class of interval "
+	^ ((val - low) rem: step) = 0
 !
 COMMENT ---------- Links ------------
 METHOD MetaLink
@@ -1767,15 +1790,20 @@ text: aString instanceVars: anArray
 	maxTemps <- 0
 !
 METHOD Parser
-parse: c	| encoder |
+parse: c with: encoderClass	| encoder |
 	" note -- must call text:instanceVars: first "
 	errBlock <- [ ^ nil ].
 	self nextLex.
-	encoder <- Encoder new.
+	encoder <- encoderClass new.
 	encoder name: self readMethodName.
+	encoder parser: self.
 	self readMethodVariables.
 	self readBody compile: encoder block: false.
 	^ encoder method: maxTemps class: c text: text
+!
+METHOD Parser
+parse: c
+	^ self parse: c with: Encoder
 !
 METHOD Parser
 error: aString
@@ -1785,6 +1813,10 @@ error: aString
 	aString print.
 	Char newline print.
 	errBlock value
+!
+METHOD Parser
+lineNum
+	^ lineNum
 !
 METHOD Parser
 currentChar
@@ -2410,6 +2442,10 @@ name: n
 	literals <- Array new: 0.
 	stackSize <- 0.
 	maxStack <- 1.
+!
+METHOD Encoder
+parser: p
+	" Don't care, except in DebugEncoder subclass "
 !
 METHOD Encoder
 pushArgs: n

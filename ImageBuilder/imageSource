@@ -88,7 +88,7 @@ METHOD MetaObject
 in: object at: index put: value
 	" change data field in object, used during initialization "
 	" returns the intialized object "
-	^ <5 value object index>
+	<5 value object index>
 !
 METHOD Object
 isNil
@@ -100,7 +100,7 @@ notNil
 !
 METHOD Object
 == arg
-	^ <1 self arg>
+	<1 self arg>
 !
 METHOD Object
 = arg
@@ -112,7 +112,7 @@ METHOD Object
 !
 METHOD Object
 class
-	^ <2 self>
+	<2 self>
 !
 METHOD Object
 printString
@@ -268,7 +268,7 @@ parseMethod: text
 METHOD Class
 new
 	" return a new instace of ourselves "
-	^ <7 self size>
+	<7 self size>
 !
 METHOD Class
 instanceVariables	| names |
@@ -402,9 +402,13 @@ and: aBlock
 !
 COMMENT -----------Process--------------
 METHOD Process
+doExecute
+	<6 self>
+!
+METHOD Process
 execute: aContext	| r |
 	context <- aContext.
-	r <- <6 self>.
+	r <- self doExecute.
 	(r = 3) ifTrue: [ 'Message not understood:' print. 
 			result print.  Char newline print ]
 	(r = 4) ifTrue: [ ^ result ]
@@ -494,13 +498,17 @@ between: low and: high
 !
 COMMENT -----------Symbol--------------
 METHOD MetaSymbol
-new: fromString
+intern: string
+	<23 string Symbol>
+!
+METHOD MetaSymbol
+new: fromString | sym |
 	^ symbols at: fromString
-		ifAbsent: [ symbols add: <23 fromString Symbol> ]
+		ifAbsent: [ symbols add: (self intern: fromString) ]
 !
 METHOD Symbol
 printString
-	^ <23 self String>
+	<23 self String>
 !
 METHOD Symbol
 = aString
@@ -558,9 +566,13 @@ newline
 	^ self new: 10
 !
 METHOD MetaChar
+doInput
+	<9>
+!
+METHOD MetaChar
 input	| c |
 	" read a single char from input stream "
-	c <- <9>.
+	c <- self doInput.
 	(c notNil)
 		ifTrue: [ ^self new: c ]
 		ifFalse: [ ^nil ]
@@ -703,16 +715,20 @@ new
 !
 METHOD MetaArray
 new: size
-	^ <7 self size> 
+	<7 self size> 
 !
 METHOD Array
 at: index
 	^ self at: index ifAbsent: [ self error: 'out of range array index']
 !
 METHOD Array
+basicAt: index
+	<24 self index>
+!
+METHOD Array
 at: index ifAbsent: exceptionBlock
 	(self includesKey: index)
-	     ifTrue: [ ^ <24 self index>]
+	     ifTrue: [ ^ self basicAt: index ]
 	     ifFalse: [ ^ exceptionBlock value ]
 !
 METHOD Array
@@ -745,12 +761,16 @@ METHOD Array
 METHOD Array
 size
 	" compute number of elements "
-	^ <4 self>
+	<4 self>
+!
+METHOD Array
+basicAt: index put: value
+	<5 value self index>
 !
 METHOD Array
 at: index put: value
 	(self includesKey: index)
-		ifTrue: [<5 value self index>]
+		ifTrue: [self basicAt: index put: value]
 		ifFalse: [ ^ self error: 'array indexing error '
 			+ self size printString + ' '+ index printString ]
 !
@@ -832,24 +852,32 @@ test	| value |
 COMMENT ---------- ByteArrays ------------
 METHOD MetaByteArray
 new: size
-	^ <20 ByteArray size>
+	<20 ByteArray size>
+!
+METHOD ByteArray
+basicAt: index
+	<21 self index>
 !
 METHOD ByteArray
 at: index ifAbsent: exceptionBlock
 	(self includesKey: index)
-	     ifTrue: [ ^ <21 self index>]
+	     ifTrue: [ ^ self basicAt: index ]
 	     ifFalse: [ ^ exceptionBlock value ]
+!
+METHOD ByteArray
+basicAt: index put: value
+	<22 value self index>
 !
 METHOD ByteArray
 at: index put: aValue
 	(self includesKey: index)
-		ifTrue: [<22 aValue self index>]
+		ifTrue: [self basicAt: index put: aValue]
 		ifFalse: [self error: 'byte array indexing error' ]
 !
 COMMENT ---------- Strings ------------
 METHOD MetaString
 new: size
-	^ <20 String size>
+	<20 String size>
 !
 METHOD MetaString
 input	| value c nl |
@@ -862,7 +890,7 @@ input	| value c nl |
 !
 METHOD String
 edit
-	^ <35 self>
+	<35 self>
 !
 METHOD String
 break: separators  | words word |
@@ -919,21 +947,29 @@ doIt	| meth |
 			  perform: meth withArguments: (Array new: 1) ]
 !
 METHOD String
+basicAt: index
+	<21 self index>
+!
+METHOD String
 at: index ifAbsent: exceptionBlock
 	(self includesKey: index)
-	     ifTrue: [ ^ Char new: <21 self index>]
+	     ifTrue: [ ^ Char new: (self basicAt: index) ]
 	     ifFalse: [ ^ exceptionBlock value ]
+!
+METHOD String
+basicAt: index put: value
+	<22 value self index>
 !
 METHOD String
 at: index put: aValue
 	(self includesKey: index)
-		ifTrue: [<22 (aValue value) self index>]
+		ifTrue: [self basicAt: index put: aValue value]
 		ifFalse: [self error: 'string indexing error' ]
 !
 METHOD String
 copy
 	" make a clone of ourself "
-	^ <23 self String>
+	<23 self String>
 !
 COMMENT --------- List -----------
 METHOD MetaList
@@ -1090,7 +1126,7 @@ quo: arg
 !
 METHOD SmallInt
 quoWithSmallInt: arg
-	^ <11 arg self>
+	<11 arg self>
 !
 METHOD SmallInt
 rem: arg
@@ -1099,25 +1135,23 @@ rem: arg
 !
 METHOD SmallInt
 remWithSmallInt: arg
-	^ <12 arg self>
+	<12 arg self>
 !
 METHOD SmallInt
 + arg
 	^ arg addToSmallInt: self
 !
 METHOD SmallInt
-addToSmallInt: arg	| r values |
-	r <- <10 arg self>.
-	^ r
+addToSmallInt: arg
+	<10 arg self>
 !
 METHOD SmallInt
 * arg
 	^ arg multBySmallInt: self
 !
 METHOD SmallInt
-multBySmallInt: arg | r values |
-	r <- <15 arg self>.
-	^ r
+multBySmallInt: arg
+	<15 arg self>
 !
 METHOD SmallInt
 - arg
@@ -1125,9 +1159,7 @@ METHOD SmallInt
 !
 METHOD SmallInt
 subtractFromSmallInt: arg
-	self <= arg
-		ifTrue: [ ^ <16 arg self> ]
-		ifFalse: [ ^ <16 self arg> negated ]
+	<16 arg self>
 !
 METHOD SmallInt
 negated
@@ -1139,11 +1171,11 @@ METHOD SmallInt
 !
 METHOD SmallInt
 lessThanSmallInt: arg
-	^ <13 arg self>
+	<13 arg self>
 !
 METHOD SmallInt
 = arg
-	^ <14 self arg>
+	<14 self arg>
 !
 METHOD SmallInt
 printString
@@ -1409,14 +1441,18 @@ isEmpty
 !
 COMMENT --------------file methods-----------------
 METHOD MetaFile
+doOpen: name mode: mode
+	<30 name mode>
+!
+METHOD MetaFile
 openRead: name
 		" open new file for reading "
-	^ self in: (self new) at: 1 put: <30 name 'r'>
+	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'r')
 !
 METHOD MetaFile
 openWrite: name
 		" open new file for writing "
-	^ self in: (self new) at: 1 put: <30 name 'w'>
+	^ self in: (self new) at: 1 put: (self doOpen: name mode: 'w')
 !
 METHOD MetaFile
 fileIn: name | file |
@@ -1457,11 +1493,15 @@ writeCharValue: n
 		ifFalse: [ <32 fileID n> ]
 !
 METHOD File
+doRead
+	<31 fileID>
+!
+METHOD File
 readChar	| c |
 		" read a single character from a file "
 	^ fileID isNil
 		ifTrue: [ self error: 'cannot read from unopened file']
-		ifFalse: [ c <- <31 fileID>.
+		ifFalse: [ c <- self doRead.
 			c notNil ifTrue: [ Char new: c ]]
 !
 METHOD File

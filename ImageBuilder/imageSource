@@ -175,6 +175,11 @@ doesNotUnderstand: aSel
 		(self class printString) +
 		'): does not understand ' + aSel printString)
 !
+METHOD Object
+basicSize
+	<4 self>.
+	self primitiveFailed
+!
 COMMENT ---------Class-------------------
 METHOD Class
 name: n parent: c variables: v

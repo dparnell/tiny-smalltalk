@@ -4,7 +4,8 @@
 #
 
 CC=gcc
-CFLAGS=-O -g -Wall -DDEBUG
+# CFLAGS=-O -g -Wall -DDEBUG
+CFLAGS=-O -g -Wall -DDEBUG -DTRACE
 
 st: main.o interp.o memory.o
 	rm -f st

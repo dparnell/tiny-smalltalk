@@ -1310,7 +1310,7 @@ static void imageOut(FILE * fp, struct object * obj)
 		exit(1);
 		}
 
-	/*printf("writng out object %d\n", obj);*/
+	/*printf("writing out object %d\n", obj);*/
 
 	if (obj == 0) {
 		sysError("writing out null object", 0);
@@ -1418,6 +1418,23 @@ void fixGlobals() {
 }
 
 /* ------------------------------------------------------------- */
+/*	checkGlobals   */
+/* ------------------------------------------------------------- */
+static void
+checkGlobals(void)
+{
+	int i;
+	struct object *o;
+
+	for (i = 0; i < globalTop; i++) {
+		o = globals[i];
+		if (!o->class) {
+			sysError("Never defined", globalNames[i]);
+		}
+	}
+}
+
+/* ------------------------------------------------------------- */
 /*	main program   */
 /* ------------------------------------------------------------- */
 
@@ -1448,9 +1465,12 @@ main()
 
 	fclose(fin);
 		
-		/* then create the tree of symbols */
+	/* then create the tree of symbols */
 	SymbolClass->data[symbolsInSymbol] = fixSymbols();
 	fixGlobals();
+
+	/* see if anything was never defined in the class source */
+	checkGlobals();
 			
 	if ((fd = fopen("image", "w")) == NULL)
 		sysError("file out error", "image");

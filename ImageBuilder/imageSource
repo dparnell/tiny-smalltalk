@@ -300,6 +300,11 @@ new
 	<7 self size>
 !
 METHOD Class
+basicNew
+	" Like new "
+	<7 self size>
+!
+METHOD Class
 instanceVariables	| names |
 		" return all our variable names "
 	parentClass notNil
@@ -872,7 +877,7 @@ emptyCollection
 COMMENT ---------- Array ------------
 METHOD MetaArray
 new
-	^ self error: 'array values cannot be created with new'
+	^ self new: 0
 !
 METHOD MetaArray
 new: sz
@@ -1050,11 +1055,6 @@ replaceFrom: start to: stop with: replacement startingAt: repStart | base |
 	]
 !
 COMMENT ---------- OrderedArray ------------
-METHOD MetaOrderedArray
-new
-	" 0-sized is OK, since we add slots as we add things in order "
-	^self new: 0
-!
 METHOD OrderedArray
 add: value
 	^ self insert: value at: (self location: value)
@@ -1600,6 +1600,11 @@ to: limit do: aBlock  | i |
 		" optimize arithmetic loops "
 	i <- self.
 	[ i <= limit ] whileTrue: [ aBlock value: i. i <- i + 1 ]
+!
+METHOD Number
+to: limit by: step do: aBlock  | i |
+	i <- self.
+	[ i <= limit ] whileTrue: [ aBlock value: i. i <- i + step ]
 !
 METHOD Number
 overflow

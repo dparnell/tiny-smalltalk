@@ -311,21 +311,6 @@ newNode(struct object *v, struct object *l, struct object *r)
 	return result;
 }
 
-static int countAssociations = 0;
-struct object *
-newAssociation(struct object * key, struct object * value)
-{
-	struct object * result;
-
-	countAssociations++;
-	result = gcalloc(2);
-	result->class = lookupGlobal("Association", 0);
-	result->data[0] = key;
-	result->data[1] = value;
-	return result;
-}
-
-
 static struct object *
 newTree(void)
 {
@@ -1694,7 +1679,6 @@ main(void)
 	imageOut(fd, newSymbol("+"));
 	fclose(fd);
 	printf("%d objects written\n", imageTop);
-	printf("%d associations\n", countAssociations);
 	printf("bye for now!\n");
 	return(0);
 }

@@ -689,6 +689,7 @@ run | prev did cmd done line |
 		" Get command "
 		'Debug> ' print.
 		line <- String input.
+		line isNil ifTrue: [ ^ nil ].
 
 		" Re-insert previous command if empty line "
 		(line isEmpty) ifTrue: [ line <- prev ].

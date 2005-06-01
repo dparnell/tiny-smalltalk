@@ -20,7 +20,7 @@ showPos | cnt |
 	cnt <- 0.
 	stack reverseDo: [:obj|
 		(cnt > 0) ifTrue: [ ' / ' print ].
-		obj print.
+		obj class print.
 		cnt <- cnt + 1
 	].
 	'' printNl
@@ -179,6 +179,12 @@ on: top | cmd done obj args idx |
 			done <- true
 		].
 
+		" Print top object on stack "
+		(cmd = 'pr') ifTrue: [
+			(stack at: stack size) printNl.
+			done <- true
+		].
+
 		" Scan across contents "
 		((cmd = 'z') or: [cmd = 'scan']) ifTrue: [
 			(obj respondsTo: #do:) ifTrue: [
@@ -205,6 +211,7 @@ on: top | cmd done obj args idx |
 'bs/basicsize     - Show basic size' printNl.
 'sz/size          - Show size' printNl.
 'p/print <expr>   - Print arbitrary expression' printNl.
+'pr               - Print current object' printNl.
 'q/quit           - Return to system' printNl.
 'z/scan           - Scan across elements of a Collection using do:' printNl.
 '?/help           - This display' printNl.

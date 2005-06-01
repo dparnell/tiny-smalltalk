@@ -9,8 +9,8 @@ CFLAGS=-O -g -Wall
 # CFLAGS=-O -g -Wall -DPROFILE
 
 # -lusr for profiling support in VSTa
-# LIBS=
-LIBS=-lusr
+LIBS=
+# LIBS=-lusr
 
 st: main.o interp.o memory.o
 	rm -f st

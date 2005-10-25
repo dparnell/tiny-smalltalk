@@ -307,8 +307,8 @@ primitive(int primitiveNumber, struct object *args, int *failed)
 			/* get length of file */
 		fseek(fp, 0, 2);
 		j = (int) ftell(fp);
-		returnedValue = 
-			(struct object *) stringReturn = gcialloc(j);
+		stringReturn = (void *)gcialloc(j);
+		returnedValue = (void *)stringReturn;
 		returnedValue->class = args->data[0]->class;
 			/* reset to beginning, and read values */
 		fseek(fp, 0, 0);

@@ -1083,15 +1083,19 @@ checkCache:
 		break;
 
 	    case 38:	/* replaceFrom:... */
-		returnedValue = stack->data[--stackTop];
-	    	if (bulkReplace(returnedValue,
-			stack->data[--stackTop],
-			stack->data[--stackTop],
-			stack->data[--stackTop],
-			stack->data[--stackTop])) {
+	    {
+		struct object *vdest, *vstart, *vstop, *vsrc, *vrepStart;
+
+		vdest = stack->data[--stackTop];
+		vstart = stack->data[--stackTop];
+		vstop = stack->data[--stackTop];
+		vsrc = stack->data[--stackTop];
+		vrepStart = stack->data[--stackTop];
+	    	if (bulkReplace(vdest, vstart, vstop, vsrc, vrepStart)) {
 		    goto failPrimitive;
 		}
 		break;
+	    }
 
 	    case 39:	/* bitShift: */
 	    	op = stack->data[--stackTop];

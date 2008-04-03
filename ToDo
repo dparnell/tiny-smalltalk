@@ -1,0 +1,29 @@
+Fix race condition in inserting a new method into a Method Dictionary,
+	and having that Method picked out of it (due to cache miss)
+	in the window of the data structure update.
+
+	How to fix?  Have to make a Dictionary change atomic.  This
+	probably means creating an Association class, with key/value,
+	and then changing Dictionary so it has an Array of Association,
+	picking the insertion point based on hash.
+
+	While you're fixing Dictionary... it shouldn't assume homogeneity
+	of keys.  Nor should it assume the keys are polymorphic on
+	Magnitude.  But to change this (even given hash values now
+	being available) means retooling imageBuilder.c to build
+	the new format of Dictionary, including calculating the same
+	hash values as the native Smalltalk environment would have.
+	At least for Symbol!
+
+Need to add concept of a hash value, based by default on the object's
+	storage address.  Set and Dictionary should use this.
+
+	Yeah, but the storage address potentially changes on each
+	GC.  Then what?
+
+	So we don't use storage address.  For now, String's and such
+	try to derive a hash value from their Character constituents.
+	As a base case, an Object with no other source of hash value
+	will use its class name.
+
+The Smalltalk-based parser can't handle zero statements within a block.

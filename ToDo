@@ -26,4 +26,7 @@ Need to add concept of a hash value, based by default on the object's
 	As a base case, an Object with no other source of hash value
 	will use its class name.
 
+	FWIW, Squeak actually burns some space in the object header to hold
+	a modest hash value.
+
 The Smalltalk-based parser can't handle zero statements within a block.

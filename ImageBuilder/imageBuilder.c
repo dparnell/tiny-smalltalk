@@ -26,7 +26,7 @@ sysError(char * a, char * b)
 	The following are roots for the file out
 */
 
-static struct object *nilObject, *trueObject, *falseObject,
+struct object *nilObject, *trueObject, *falseObject,
 	*globalValues, *SmallIntClass, *ArrayClass, *BlockClass,
 	*IntegerClass;
 

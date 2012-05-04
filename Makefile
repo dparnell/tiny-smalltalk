@@ -4,13 +4,11 @@
 #
 
 CC=gcc
-CFLAGS=-O -g -Wall
+# CFLAGS=-g -Wall
 # CFLAGS=-g -Wall -DDEBUG -DTRACE
-# CFLAGS=-O -g -Wall -DPROFILE
+CFLAGS=-O -g -Wall
 
-# -lusr for profiling support in VSTa
 LIBS=
-# LIBS=-lusr
 
 st: main.o interp.o memory.o
 	rm -f st

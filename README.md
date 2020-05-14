@@ -1,3 +1,9 @@
+I found this code somewhere on the net and wanted to make sure I could find it again.
+
+-------------------------------------------------------------------------------------
+
+
+
 This is my work on Professor Timothy Budd's Smalltalk interpreter.
 Over the years, he's implemented several, including one much smaller
 than this, and one in Javascript.  This one's in C, and is a nice blend
